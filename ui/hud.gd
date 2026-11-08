@@ -54,7 +54,12 @@ func _update_all_resources() -> void:
 	if label_materials:
 		label_materials.text = "🏗 Материалы: %s" % ("∞" if is_unl else ("%d т" % ResourceManager.get_resource("materials")))
 	if label_population:
-		label_population.text = "👥 Персонал: %s" % ("∞" if is_unl else ("%d" % ResourceManager.get_resource("population")))
+		var cur_pop = ResourceManager.get_resource("population")
+		var cap_pop = ResourceManager.get_resource("population_capacity")
+		if is_unl:
+			label_population.text = "👥 Персонал: %d / %d [∞]" % [cur_pop, cap_pop]
+		else:
+			label_population.text = "👥 Персонал: %d / %d" % [cur_pop, cap_pop]
 
 func _on_resource_changed(_res_name: String, _new_amount: int) -> void:
 	_update_all_resources()

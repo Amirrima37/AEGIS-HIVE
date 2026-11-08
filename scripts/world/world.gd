@@ -7,6 +7,7 @@ extends Node2D
 @onready var network_overlay: NetworkOverlay = $NetworkOverlay
 @onready var building_placer: BuildingPlacer = $BuildingPlacer
 @onready var tick_manager: TickManager = $TickManager
+@onready var defense_system: DefenseSystem = $DefenseSystem
 
 func _ready() -> void:
 	if building_manager:
@@ -28,6 +29,9 @@ func _ready() -> void:
 	if tick_manager:
 		tick_manager.building_manager = building_manager
 		tick_manager.network_manager = network_manager
+		
+	if defense_system:
+		defense_system.init(building_manager, network_manager)
 
 	_spawn_initial_command_center.call_deferred()
 

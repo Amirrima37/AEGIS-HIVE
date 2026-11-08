@@ -1,0 +1,47 @@
+[gd_resource type="Resource" script_class="BuildingData" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/buildings/building_data.gd" id="1_script"]
+[ext_resource type="Texture2D" path="res://assets/sprites/buildings/sensor_tower.png" id="2_sprite"]
+
+[resource]
+script = ExtResource("1_script")
+id = &"sensor_tower"
+display_name = "Сенсорная вышка"
+description = "Радар раннего обнаружения угроз. Расширяет дальность захвата целей турелей на 20% в радиусе 15 тайлов."
+icon = ExtResource("2_sprite")
+sprite = ExtResource("2_sprite")
+tile_size = Vector2i(1, 1)
+cost_ore = 15
+cost_materials = 20
+cost_energy_initial = 0
+energy_production = 0
+energy_consumption = 2
+power_priority = 0
+ore_production = 0
+ore_consumption = 0
+materials_production = 0
+materials_consumption = 0
+population_capacity = 0
+max_hp = 200
+allowed_layers = "any"
+is_structural = false
+unlocks_layer_above = false
+unlocks_layer_below = false
+network_type = "power_consumer"
+is_connector = false
+connection_range = 1
+throughput = 0
+connects_layers = false
+base_offset_y = 0.0
+is_defense = true
+defense_role = "sensor"
+is_solid = false
+attack_range = 0.0
+attack_damage = 0.0
+attack_rate = 0.0
+ammo_consumption_per_shot = 1
+shield_radius = 0.0
+sensor_radius = 15.0
+repair_range = 8.0
+repair_rate = 0.0
+ammo_production = 0

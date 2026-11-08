@@ -9,6 +9,35 @@ var _accumulated_time: float = 0.0
 
 func _ready() -> void:
 	_find_dependencies()
+	if EventBus.has_signal("building_placed"):
+		EventBus.building_placed.connect(_on_building_network_changed)
+	if EventBus.has_signal("building_removed"):
+		EventBus.building_removed.connect(_on_building_network_changed)
+	if EventBus.has_signal("network_updated"):
+		EventBus.network_updated.connect(_on_building_network_changed)
+	update_population_capacity()
+
+func _on_building_network_changed(_arg1 = null, _arg2 = null) -> void:
+	update_population_capacity()
+
+func get_total_population_capacity() -> int:
+	_find_dependencies()
+	if building_manager == null:
+		return ResourceManager.get_resource("population_capacity")
+	var all_buildings = building_manager.get_all_buildings()
+	var cap = 0
+	for b in all_buildings:
+		if is_instance_valid(b) and b.data and b.data.population_capacity > 0:
+			if b.is_operational and b.connected_to_power and b.current_hp > 0:
+				cap += b.data.population_capacity
+	if cap == 0 and all_buildings.is_empty():
+		cap = max(10, ResourceManager.get_resource("population"))
+	return cap
+
+func update_population_capacity() -> int:
+	var cap = get_total_population_capacity()
+	ResourceManager.set_resource("population_capacity", cap)
+	return cap
 
 func _find_dependencies() -> void:
 	if (building_manager == null or not is_instance_valid(building_manager)) and is_inside_tree():
@@ -51,23 +80,24 @@ func run_tick() -> void:
 	if total_energy_produced > 0:
 		ResourceManager.produce({"energy": total_energy_produced})
 	
-	# Phase 2: ENERGY CONSUMPTION (Consumers)
+	# Phase 2: ENERGY CONSUMPTION (Consumers sorted by power_priority: 0=Defense/LifeSupport, 1=Logistics, 2=Industry)
+	var consumers: Array[Building] = []
 	for b in all_buildings:
-		if not is_instance_valid(b) or b.data == null:
-			continue
-		if b.data.is_connector:
-			continue
-		if b.data.energy_consumption > 0:
-			if b.connected_to_power and b.current_hp > 0:
-				var need = b.data.energy_consumption
-				if ResourceManager.get_resource("energy") >= need:
-					ResourceManager.spend({"energy": need})
-					b.is_operational = true
-				else:
-					# Brownout
-					b.is_operational = false
+		if is_instance_valid(b) and b.data != null and not b.data.is_connector and b.data.energy_consumption > 0:
+			consumers.append(b)
+	consumers.sort_custom(func(a, b): return a.data.power_priority < b.data.power_priority)
+	
+	for b in consumers:
+		if b.connected_to_power and b.current_hp > 0:
+			var need = b.data.energy_consumption
+			if ResourceManager.get_resource("energy") >= need:
+				ResourceManager.spend({"energy": need})
+				b.is_operational = true
 			else:
+				# Brownout: низкоприоритетные здания отключаются первыми
 				b.is_operational = false
+		else:
+			b.is_operational = false
 				
 	# Phase 3: ORE PRODUCTION (Quarries, etc.)
 	var total_ore_produced = 0
@@ -101,13 +131,15 @@ func run_tick() -> void:
 			elif mat_yield > 0:
 				ResourceManager.produce({"materials": mat_yield})
 				
-	# Population capacity recalculation
-	var total_pop_cap = 0
-	for b in all_buildings:
-		if is_instance_valid(b) and b.is_operational and b.connected_to_power and b.data:
-			total_pop_cap += b.data.population_capacity
-	if total_pop_cap > 0 and ResourceManager.get_resource("population") < total_pop_cap:
-		pass
+	# Phase 6: Population capacity recalculation and gradual growth
+	var total_pop_cap = update_population_capacity()
+	var current_pop = ResourceManager.get_resource("population")
+	if current_pop < total_pop_cap:
+		var diff = total_pop_cap - current_pop
+		var growth = 2 if diff >= 10 else 1
+		ResourceManager.modify_resource("population", growth)
+	elif current_pop > total_pop_cap:
+		ResourceManager.modify_resource("population", -1)
 		
 	# Tick increment & EventBus broadcast
 	GameState.tick_count += 1

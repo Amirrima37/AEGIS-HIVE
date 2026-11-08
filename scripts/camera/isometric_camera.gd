@@ -78,7 +78,16 @@ func _unhandled_input(event: InputEvent) -> void:
 				EventBus.layer_change_requested.emit(-1)
 
 func _zoom_at_mouse(factor: float, mouse_screen_pos: Vector2) -> void:
+	var old_zoom_val = _target_zoom.x
 	var new_zoom_val = clamp(_target_zoom.x * factor, min_zoom, max_zoom)
+	if is_equal_approx(old_zoom_val, new_zoom_val):
+		return
+		
+	# При зуме смещаем камеру так, чтобы точка под курсором оставалась неподвижной
+	var viewport_size = get_viewport_rect().size
+	var mouse_offset_from_center = mouse_screen_pos - viewport_size * 0.5
+	var world_shift = (mouse_offset_from_center / old_zoom_val) - (mouse_offset_from_center / new_zoom_val)
+	position += world_shift
 	_target_zoom = Vector2(new_zoom_val, new_zoom_val)
 
 func _request_create_layer(direction: int) -> void:

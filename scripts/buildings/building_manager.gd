@@ -75,7 +75,14 @@ func place_building(data: BuildingData, pos: Vector2i, z: int) -> Building:
 		return null
 		
 	# Instantiate building
-	var building = Building.new()
+	var building: Building
+	if data.custom_script != null:
+		building = data.custom_script.new()
+	elif data.id == &"defense_wall" or data.defense_role == "wall":
+		building = WallNode.new()
+	else:
+		building = Building.new()
+		
 	building.name = "%s_%d_%d_%d" % [data.id, z, pos.x, pos.y]
 	
 	var tml: TileMapLayer = null

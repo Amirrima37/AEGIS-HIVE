@@ -18,7 +18,14 @@ const BUILDING_PATHS = [
 	"res://data/buildings/power_cable.tres",
 	"res://data/buildings/conveyor.tres",
 	"res://data/buildings/shaft_elevator.tres",
-	"res://data/buildings/warehouse.tres"
+	"res://data/buildings/warehouse.tres",
+	"res://data/buildings/defense_wall.tres",
+	"res://data/buildings/autocannon_turret.tres",
+	"res://data/buildings/heavy_railgun.tres",
+	"res://data/buildings/shield_generator.tres",
+	"res://data/buildings/munitions_factory.tres",
+	"res://data/buildings/sensor_tower.tres",
+	"res://data/buildings/repair_depot.tres"
 ]
 
 func _ready() -> void:

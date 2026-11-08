@@ -11,6 +11,7 @@
 [ext_resource type="Script" path="res://scripts/networks/network_overlay.gd" id="9_no"]
 [ext_resource type="Script" path="res://scripts/buildings/building_placer.gd" id="10_bp"]
 [ext_resource type="Script" path="res://scripts/economy/tick_manager.gd" id="11_tm"]
+[ext_resource type="Script" path="res://scripts/defense/defense_system.gd" id="12_ds"]
 
 [node name="World" type="Node2D"]
 script = ExtResource("1_world")
@@ -44,3 +45,6 @@ script = ExtResource("10_bp")
 
 [node name="TickManager" type="Node" parent="."]
 script = ExtResource("11_tm")
+
+[node name="DefenseSystem" type="Node2D" parent="."]
+script = ExtResource("12_ds")

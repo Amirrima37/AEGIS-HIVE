@@ -16,6 +16,7 @@ cost_materials = 20
 cost_energy_initial = 0
 energy_production = 0
 energy_consumption = 2
+power_priority = 1
 ore_production = 0
 ore_consumption = 0
 materials_production = 0

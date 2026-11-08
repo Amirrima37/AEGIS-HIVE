@@ -3,7 +3,7 @@ extends Node2D
 
 const LayerData = preload("res://scripts/world/layer_data.gd")
 
-@export var initial_grid_size: int = 24
+@export var initial_grid_size: int = 64
 @export var default_layer: int = 0
 
 var layers: Dictionary = {} # int -> LayerData
@@ -26,6 +26,12 @@ func _ready() -> void:
 		EventBus.request_create_layer_above.connect(_on_request_create_layer_above)
 	if EventBus.has_signal("request_create_layer_below"):
 		EventBus.request_create_layer_below.connect(_on_request_create_layer_below)
+	if EventBus.has_signal("building_removed"):
+		EventBus.building_removed.connect(_on_building_changed_structural)
+	if EventBus.has_signal("building_damaged"):
+		EventBus.building_damaged.connect(_on_building_damaged_structural)
+	if EventBus.has_signal("layer_removed"):
+		EventBus.layer_removed.connect(_on_layer_removed_structural)
 	
 	# Create initial surface layer (z=0)
 	create_layer(0)
@@ -115,25 +121,26 @@ func _update_layers_visibility() -> void:
 	for z_key in layers.keys():
 		var data: LayerData = layers[z_key]
 		var tml: TileMapLayer = data.tile_map_layer
-		var diff = abs(z_key - active_layer_z)
 		
-		if diff == 0:
+		if z_key > active_layer_z:
+			# Любые ярусы ВЫШЕ активного скрываются, чтобы их тайлы, здания и сетка
+			# не перекрывали активный слой и не делали его полупрозрачным!
+			tml.visible = false
+		elif z_key == active_layer_z:
+			# Текущий рабочий ярус: строго видим и на 100% непрозрачен
 			tml.visible = true
 			tml.modulate = Color(1.0, 1.0, 1.0, 1.0)
-		elif diff == 1:
-			tml.visible = true
-			if z_key < active_layer_z:
-				# Below: darker / receding
-				tml.modulate = Color(0.65, 0.7, 0.75, 0.28)
-			else:
-				# Above: ghostly holographic / elevated
-				tml.modulate = Color(0.7, 0.85, 1.0, 0.24)
-		elif diff == 2:
-			tml.visible = true
-			tml.modulate = Color(0.5, 0.5, 0.6, 0.08)
 		else:
-			# Beyond 2 levels distance: hide completely to keep framerate pristine
-			tml.visible = false
+			# Ярусы НИЖЕ активного: просвечивают сквозь открытые участки (почти прозрачные)
+			var diff = active_layer_z - z_key
+			if diff == 1:
+				tml.visible = true
+				tml.modulate = Color(0.65, 0.7, 0.75, 0.12)
+			elif diff == 2:
+				tml.visible = true
+				tml.modulate = Color(0.5, 0.5, 0.6, 0.04)
+			else:
+				tml.visible = false
 
 func _on_layer_change_requested(delta: int) -> void:
 	var target_z = active_layer_z + delta
@@ -147,7 +154,6 @@ func _on_layer_jump_requested(target_z: int) -> void:
 func _on_layer_created_requested(z: int) -> void:
 	if not layers.has(z):
 		create_layer(z)
-		set_active_layer(z)
 
 func _get_building_manager() -> Node:
 	if is_inside_tree():
@@ -165,7 +171,6 @@ func _on_request_create_layer_above() -> void:
 				push_warning("Cannot create layer +%d: Requires a support pillar on layer %d" % [z_target, z_target - 1])
 				return
 	create_layer(z_target)
-	set_active_layer(z_target)
 
 func _on_request_create_layer_below() -> void:
 	var keys = get_existing_z_levels()
@@ -178,9 +183,68 @@ func _on_request_create_layer_below() -> void:
 				push_warning("Cannot create layer %d: Requires an excavation rig on layer %d" % [z_target, z_target + 1])
 				return
 	create_layer(z_target)
-	set_active_layer(z_target)
 
 func get_existing_z_levels() -> Array:
 	var keys = layers.keys()
 	keys.sort()
 	return keys
+
+func remove_layer(z: int) -> void:
+	if z == 0 or not layers.has(z):
+		return
+	var data = layers[z]
+	layers.erase(z)
+	if is_instance_valid(data.tile_map_layer):
+		data.tile_map_layer.queue_free()
+	EventBus.layer_removed.emit(z)
+	if active_layer_z == z:
+		set_active_layer(0)
+	validate_structural_integrity()
+
+func is_layer_structurally_sound(z: int) -> bool:
+	if z == 0:
+		return true
+	var is_unl = GameState and GameState.has_method("is_unlimited_mode") and GameState.is_unlimited_mode()
+	if is_unl:
+		return true
+	var bm = _get_building_manager()
+	if bm == null:
+		return true
+	if z > 0:
+		return bm.has_structural_support(z)
+	elif z < 0:
+		return bm.has_excavation_rig(z)
+	return true
+
+func validate_structural_integrity() -> Array[int]:
+	var compromised: Array[int] = []
+	var is_unl = GameState and GameState.has_method("is_unlimited_mode") and GameState.is_unlimited_mode()
+	if is_unl:
+		return compromised
+		
+	var bm = _get_building_manager()
+	if bm == null:
+		return compromised
+		
+	for z in get_existing_z_levels():
+		if z > 0 and not bm.has_structural_support(z):
+			compromised.append(z)
+			if EventBus and EventBus.has_signal("layer_integrity_compromised"):
+				EventBus.layer_integrity_compromised.emit(z, "missing_support_pillar")
+		elif z < 0 and not bm.has_excavation_rig(z):
+			compromised.append(z)
+			if EventBus and EventBus.has_signal("layer_integrity_compromised"):
+				EventBus.layer_integrity_compromised.emit(z, "missing_excavation_rig")
+				
+	return compromised
+
+func _on_building_changed_structural(b: Node2D) -> void:
+	if b and "data" in b and b.data and b.data.is_structural:
+		validate_structural_integrity()
+
+func _on_building_damaged_structural(b: Node2D, _amount: int, current_hp: int) -> void:
+	if current_hp <= 0 and b and "data" in b and b.data and b.data.is_structural:
+		validate_structural_integrity()
+
+func _on_layer_removed_structural(_z: int) -> void:
+	validate_structural_integrity()

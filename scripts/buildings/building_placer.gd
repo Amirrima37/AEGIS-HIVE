@@ -158,9 +158,58 @@ func _update_ghost_cursor() -> void:
 	can_place_current = is_area_free and can_afford and layer_allowed and unique_ok
 	
 	if can_place_current:
-		_ghost_sprite.modulate = Color(0.3, 1.0, 0.3, 0.6) # Green
+		if current_building_data and current_building_data.connects_layers:
+			var is_aligned = false
+			if building_manager and building_manager.occupancy:
+				for adj_z in [z - 1, z + 1]:
+					var adj_b = building_manager.occupancy.get_building_at(adj_z, current_grid_pos)
+					if adj_b and is_instance_valid(adj_b) and adj_b.data and adj_b.data.connects_layers:
+						is_aligned = true
+						break
+			if is_aligned:
+				_ghost_sprite.modulate = Color(0.1, 1.5, 0.4, 0.85) # Изумрудный: точное попадание в шахту лифта
+			else:
+				_ghost_sprite.modulate = Color(1.0, 0.85, 0.2, 0.75) # Янтарный: лифт без вертикальной связки
+		else:
+			_ghost_sprite.modulate = Color(0.3, 1.0, 0.3, 0.6) # Green
 	else:
 		_ghost_sprite.modulate = Color(1.0, 0.3, 0.3, 0.6) # Red
+
+func _draw() -> void:
+	if current_mode != Mode.BUILDING or current_building_data == null:
+		return
+	if not current_building_data.connects_layers:
+		return
+		
+	var tml = _get_active_tile_map_layer()
+	if tml == null or building_manager == null:
+		return
+		
+	var cur_z = GameState.current_layer
+	var shaft_color = Color(0.0, 0.9, 1.0, 0.55) # Голографический контур шахты лифта
+	
+	# Проекция контуров лифтов со смежных ярусов (cur_z - 1 и cur_z + 1)
+	for adj_z in [cur_z - 1, cur_z + 1]:
+		var adj_buildings = building_manager.get_buildings_on_layer(adj_z)
+		for b in adj_buildings:
+			if is_instance_valid(b) and b.data and b.data.connects_layers:
+				var pos = b.grid_position
+				var size = b.data.tile_size
+				var origin_l = tml.map_to_local(pos)
+				var end_l = tml.map_to_local(pos + size - Vector2i(1, 1))
+				var center_local = to_local(tml.to_global((origin_l + end_l) * 0.5))
+				
+				var hw = size.x * 64.0
+				var hh = size.y * 32.0
+				var pts = PackedVector2Array([
+					center_local + Vector2(0, -hh),
+					center_local + Vector2(hw, 0),
+					center_local + Vector2(0, hh),
+					center_local + Vector2(-hw, 0),
+					center_local + Vector2(0, -hh)
+				])
+				draw_polyline(pts, shaft_color, 2.5, true)
+				draw_circle(center_local, 4.0, shaft_color)
 
 func _update_demolish_cursor() -> void:
 	var tml = _get_active_tile_map_layer()
@@ -219,6 +268,7 @@ func _handle_demolish_click() -> void:
 		building_manager.remove_building(b)
 
 func _cancel_current_mode() -> void:
+	queue_redraw()
 	if current_mode == Mode.BUILDING:
 		current_mode = Mode.IDLE
 		current_building_data = null
@@ -244,8 +294,10 @@ func _on_build_mode_entered(building_data: Resource) -> void:
 		if _ghost_sprite and current_building_data.sprite:
 			_ghost_sprite.texture = current_building_data.sprite
 		_update_ghost_cursor()
+	queue_redraw()
 
 func _on_build_mode_exited() -> void:
+	queue_redraw()
 	if current_mode == Mode.BUILDING:
 		current_mode = Mode.IDLE
 		current_building_data = null

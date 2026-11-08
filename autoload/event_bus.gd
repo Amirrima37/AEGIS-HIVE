@@ -39,3 +39,12 @@ signal cable_mode_entered(cable_data: Resource)
 signal cable_mode_exited
 signal overlay_toggled(overlay_name: String, visible: bool)
 signal layer_isolated_warning(z: int)
+
+# Defense signals (Stage 3)
+signal turret_fired(turret: Node2D, target: Variant)
+signal shield_depleted
+signal wall_destroyed(building: Node2D)
+signal building_repaired(building: Node2D, amount: int)
+signal enemy_wave_start(wave_index: int)
+signal enemy_wave_ended(wave_index: int)
+signal base_under_attack(pos: Vector2, z: int)

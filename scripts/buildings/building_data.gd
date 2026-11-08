@@ -18,6 +18,7 @@ extends Resource
 @export_group("Экономика (за тик)")
 @export var energy_production: int = 0
 @export var energy_consumption: int = 0
+@export var power_priority: int = 1 # 0 = Оборона/Жизнеобеспечение, 1 = Логистика, 2 = Промышленность
 @export var ore_production: int = 0
 @export var ore_consumption: int = 0
 @export var materials_production: int = 0
@@ -44,3 +45,18 @@ extends Resource
 
 @export_group("Визуальное выравнивание")
 @export var base_offset_y: float = 0.0 # Ручная юстировка смещения по Y (0 = идеальная посадка на сетку)
+
+@export_group("Оборонные свойства")
+@export var is_defense: bool = false
+@export var defense_role: String = "" # "wall", "turret", "railgun", "shield", "munitions", "sensor", "repair"
+@export var is_solid: bool = false
+@export var custom_script: Script = null
+@export var attack_range: float = 0.0
+@export var attack_damage: float = 0.0
+@export var attack_rate: float = 0.0
+@export var ammo_consumption_per_shot: int = 1
+@export var shield_radius: float = 0.0
+@export var sensor_radius: float = 0.0
+@export var repair_range: float = 8.0
+@export var repair_rate: float = 0.0
+@export var ammo_production: int = 0

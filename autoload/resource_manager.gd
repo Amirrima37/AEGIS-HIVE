@@ -4,7 +4,8 @@ var resources: Dictionary = {
 	"energy": 100,
 	"ore": 50,
 	"materials": 30,
-	"population": 10
+	"population": 10,
+	"population_capacity": 50
 }
 
 func get_resource(res_name: String) -> int:

@@ -118,3 +118,12 @@ func is_layer_connected(z: int) -> bool:
 	if shaft_elevator:
 		return shaft_elevator.is_layer_connected(z, all_buildings)
 	return false
+
+func get_interlayer_throughput(z1: int, z2: int) -> int:
+	_find_dependencies()
+	var all_buildings: Array[Building] = []
+	if building_manager:
+		all_buildings = building_manager.get_all_buildings()
+	if shaft_elevator:
+		return shaft_elevator.get_throughput_between(z1, z2, all_buildings)
+	return 0

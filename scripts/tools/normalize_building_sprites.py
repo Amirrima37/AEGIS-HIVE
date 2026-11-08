@@ -31,7 +31,14 @@ SPECS = {
     'power_cable.png': 1,
     'conveyor.png': 1,
     'shaft_elevator.png': 2,
-    'warehouse.png': 2
+    'warehouse.png': 2,
+    'defense_wall.png': 1,
+    'autocannon_turret.png': 1,
+    'heavy_railgun.png': 2,
+    'shield_generator.png': 2,
+    'munitions_factory.png': 2,
+    'sensor_tower.png': 1,
+    'repair_depot.png': 2
 }
 
 def find_bottom_vertex(im):

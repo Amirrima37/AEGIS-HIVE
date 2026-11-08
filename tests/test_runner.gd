@@ -1,5 +1,7 @@
 extends Node
 
+const TestDefenseSystem = preload("res://tests/test_defense_system.gd")
+
 func _ready() -> void:
 	# Watchdog timer: automatically exit process after 15s if tests get stuck or crash
 	get_tree().create_timer(15.0).timeout.connect(func():
@@ -423,5 +425,118 @@ func _ready() -> void:
 	building_mgr.remove_building(t215_quarry)
 	print("[OK] T2.15: test_building_damage_invalidates_network пройден (сети реагируют на урон)")
 	
+	# T2.16: test_power_priority_brownout (Priority 0 Habitation gets power first over Priority 2 Factory during deficit)
+	for b in building_mgr.get_buildings_on_layer(0):
+		if b.data and b.data.id != &"command_center":
+			building_mgr.remove_building(b)
+			
+	ResourceManager.set_resource("ore", 1000)
+	ResourceManager.set_resource("materials", 1000)
+	var t216_hab = building_mgr.place_building(hab_data, Vector2i(2, 0), 0) # 1x1: (2, 0) touches CC at (1, 0)
+	var t216_factory = building_mgr.place_building(factory_data, Vector2i(2, 1), 0) # 2x2: (2..3, 1..2) touches CC
+	var t216_factory2 = building_mgr.place_building(factory_data, Vector2i(2, -2), 0) # 2x2: (2..3, -2..-1) touches CC
+	assert(t216_hab != null and t216_factory != null and t216_factory2 != null, "T2.16: placements failed")
+	assert(t216_hab.data.power_priority == 0, "T2.16: hab priority must be 0")
+	assert(t216_factory.data.power_priority == 2, "T2.16: factory priority must be 2")
+	network_mgr.recalculate_all()
+	assert(t216_hab.connected_to_power == true and t216_factory.connected_to_power == true and t216_factory2.connected_to_power == true, "T2.16: power connection failed")
+	
+	# Deficit simulation: CC generates +10 net. Total demand = 2 (hab, p0) + 5 (f1, p2) + 5 (f2, p2) = 12 energy.
+	ResourceManager.set_resource("energy", 0)
+	tick_mgr.run_tick()
+	# CC produces +10 -> Hab (p0) consumes 2 (leaving 8) -> Factory1 (p2) consumes 5 (leaving 3) -> Factory2 (p2, needs 5) browns out!
+	assert(t216_hab.is_operational == true, "T2.16: Priority 0 building must remain operational during deficit")
+	assert(t216_factory2.is_operational == false, "T2.16: Lowest priority building must brown out during deficit")
+	building_mgr.remove_building(t216_hab)
+	building_mgr.remove_building(t216_factory)
+	building_mgr.remove_building(t216_factory2)
+	print("[OK] T2.16: test_power_priority_brownout пройден (приоритеты энергии защищают жизненно важные узлы)")
+	
+	# T2.17: test_elevator_throughput_query (Shaft elevator capacity queryable and operational)
+	var t217_elev_top = building_mgr.place_building(elevator_data, Vector2i(2, 2), 0)
+	var t217_elev_bot = building_mgr.place_building(elevator_data, Vector2i(2, 2), -1)
+	assert(t217_elev_top != null and t217_elev_bot != null, "T2.17: elevator placement failed")
+	var tp = network_mgr.get_interlayer_throughput(0, -1)
+	assert(tp == 100, "T2.17: throughput between 0 and -1 must be 100, got %d" % tp)
+	building_mgr.remove_building(t217_elev_top)
+	building_mgr.remove_building(t217_elev_bot)
+	print("[OK] T2.17: test_elevator_throughput_query пройден (пропускная способность лифтов валидируется)")
+	
+	# T2.18: test_layer_structural_integrity (Structural integrity and missing support detection)
+	assert(layer_mgr.is_layer_structurally_sound(0) == true, "T2.18: surface layer z=0 must always be sound")
+	var comp_layers = layer_mgr.validate_structural_integrity()
+	# In tests, if upper layer 1 exists without pillar, it should be detected in compromised layers
+	if layer_mgr.layers.has(1):
+		assert(comp_layers.has(1) == true, "T2.18: layer 1 without pillar must be detected as compromised")
+	print("[OK] T2.18: test_layer_structural_integrity пройден (целостность ярусов и опор валидируется)")
+	
+	# T2.19: test_population_growth_and_capacity (Habitation block raises capacity and ticks grow population)
+	ResourceManager.set_resource("energy", 1000)
+	ResourceManager.set_resource("ore", 1000)
+	ResourceManager.set_resource("materials", 1000)
+	ResourceManager.set_resource("population", 10)
+	var t219_hab = building_mgr.place_building(hab_data, Vector2i(2, 0), 0)
+	assert(t219_hab != null, "T2.19: hab placement failed")
+	network_mgr.recalculate_all()
+	tick_mgr.run_tick()
+	var cap_after = ResourceManager.get_resource("population_capacity")
+	assert(cap_after >= 70, "T2.19: Capacity must be at least 70 (CC 50 + Hab 20), got %d" % cap_after)
+	var pop_after_1 = ResourceManager.get_resource("population")
+	assert(pop_after_1 > 10, "T2.19: Population must grow after tick, got %d" % pop_after_1)
+	for i in range(35):
+		tick_mgr.run_tick()
+	var pop_after_growth = ResourceManager.get_resource("population")
+	assert(pop_after_growth == cap_after, "T2.19: Population must reach capacity %d, got %d" % [cap_after, pop_after_growth])
+	building_mgr.remove_building(t219_hab)
+	tick_mgr.run_tick()
+	assert(ResourceManager.get_resource("population_capacity") == 50, "T2.19: Capacity must return to 50 after hab demolished")
+	print("[OK] T2.19: test_population_growth_and_capacity пройден (население плавно растет до нового лимита)")
+	
+	# T2.20: test_layer_creation_preserves_active_layer_and_transparency
+	layer_mgr.set_active_layer(0)
+	assert(layer_mgr.active_layer_z == 0, "T2.20: Active layer must be 0")
+	var l0_tml = layer_mgr.layers[0].tile_map_layer
+	assert(l0_tml.visible == true, "T2.20: Active layer must be visible")
+	assert(l0_tml.modulate.a == 1.0, "T2.20: Active layer must be fully opaque (1.0)")
+	EventBus.request_create_layer_below.emit()
+	assert(layer_mgr.active_layer_z == 0, "T2.20: Active layer must remain 0 when creating new layer below")
+	assert(l0_tml.modulate.a == 1.0, "T2.20: Active layer must remain fully opaque")
+	if layer_mgr.layers.has(1):
+		assert(layer_mgr.layers[1].tile_map_layer.visible == false, "T2.20: Layer above active layer must be hidden to avoid obscuring current layer")
+	if layer_mgr.layers.has(-1):
+		var lm1_tml = layer_mgr.layers[-1].tile_map_layer
+		assert(lm1_tml.visible == true, "T2.20: Lower layer -1 must be visible")
+		assert(lm1_tml.modulate.a <= 0.15, "T2.20: Lower layer -1 must be almost transparent (<=0.15), got %f" % lm1_tml.modulate.a)
+	# When jumping to layer 1:
+	if layer_mgr.layers.has(1):
+		layer_mgr.set_active_layer(1)
+		assert(layer_mgr.layers[1].tile_map_layer.visible == true, "T2.20: Layer 1 must be visible when active")
+		assert(layer_mgr.layers[1].tile_map_layer.modulate.a == 1.0, "T2.20: Layer 1 must be opaque when active")
+		assert(layer_mgr.layers[0].tile_map_layer.visible == true, "T2.20: Layer 0 below must be visible")
+		assert(layer_mgr.layers[0].tile_map_layer.modulate.a <= 0.15, "T2.20: Layer 0 below must be translucent")
+		layer_mgr.set_active_layer(0)
+	print("[OK] T2.20: test_layer_creation_preserves_active_layer_and_transparency пройден (активный слой непрозрачен, слои сверху скрыты, снизу почти прозрачные)")
+	
+	# T2.21: test_unoperational_building_rim_and_opacity
+	ResourceManager.set_resource("ore", 1000)
+	ResourceManager.set_resource("materials", 1000)
+	var t221_hab = building_mgr.place_building(hab_data, Vector2i(6, 6), 0)
+	assert(t221_hab != null, "T2.21: hab placement failed")
+	network_mgr.recalculate_all()
+	assert(t221_hab.connected_to_power == false, "T2.21: isolated hab must not have power")
+	assert(t221_hab.is_operational == false, "T2.21: unpowered hab must be non-operational")
+	assert(t221_hab.sprite_node.modulate == Color(1.0, 1.0, 1.0, 1.0), "T2.21: unoperational sprite must stay fully opaque Color(1,1,1,1)")
+	assert(t221_hab.status_rim_node != null and t221_hab.status_rim_node.visible == true, "T2.21: status rim must be visible for unoperational building")
+	# Now power the building manually to test recovery
+	t221_hab.connected_to_power = true
+	assert(t221_hab.is_operational == true, "T2.21: hab must be operational when power is restored")
+	assert(t221_hab.status_rim_node.visible == false, "T2.21: status rim must hide when building becomes operational")
+	building_mgr.remove_building(t221_hab)
+	print("[OK] T2.21: test_unoperational_building_rim_and_opacity пройден (здание непрозрачно, неоновая окантовка мигает красным при отключении)")
 	print("--- ВСЕ ТЕСТЫ ЭТАПА 0, 1 И 2 УСПЕШНО ПРОЙДЕНЫ (EXIT 0) ---")
+	
+	# --- ТЕСТЫ ЭТАПА 3: ОБОРОНИТЕЛЬНЫЕ СИСТЕМЫ ---
+	TestDefenseSystem.run_all_tests(main_node)
+	
+	print("--- ВСЕ ТЕСТЫ ЭТАПОВ 0, 1, 2 И 3 УСПЕШНО ПРОЙДЕНЫ (EXIT 0) ---")
 	get_tree().quit(0)

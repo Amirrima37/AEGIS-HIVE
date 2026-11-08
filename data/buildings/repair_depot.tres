@@ -1,0 +1,47 @@
+[gd_resource type="Resource" script_class="BuildingData" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/buildings/building_data.gd" id="1_script"]
+[ext_resource type="Texture2D" path="res://assets/sprites/buildings/repair_depot.png" id="2_sprite"]
+
+[resource]
+script = ExtResource("1_script")
+id = &"repair_depot"
+display_name = "Ремонтный ангар"
+description = "Автоматизированные ремонтные дроны восстанавливают повреждённые здания в радиусе 8 тайлов со скоростью 50 HP/с, расходуя материалы."
+icon = ExtResource("2_sprite")
+sprite = ExtResource("2_sprite")
+tile_size = Vector2i(2, 2)
+cost_ore = 40
+cost_materials = 35
+cost_energy_initial = 0
+energy_production = 0
+energy_consumption = 3
+power_priority = 1
+ore_production = 0
+ore_consumption = 0
+materials_production = 0
+materials_consumption = 0
+population_capacity = 0
+max_hp = 400
+allowed_layers = "any"
+is_structural = false
+unlocks_layer_above = false
+unlocks_layer_below = false
+network_type = "power_consumer"
+is_connector = false
+connection_range = 1
+throughput = 0
+connects_layers = false
+base_offset_y = 0.0
+is_defense = true
+defense_role = "repair"
+is_solid = false
+attack_range = 0.0
+attack_damage = 0.0
+attack_rate = 0.0
+ammo_consumption_per_shot = 1
+shield_radius = 0.0
+sensor_radius = 0.0
+repair_range = 8.0
+repair_rate = 50.0
+ammo_production = 0

@@ -1,8 +1,8 @@
 {
   "scripts/tools/normalize_building_sprites.py": {
-    "mtime": 1794154089.4821274,
-    "seen": 1794156457.5910552,
-    "ast_hash": "53458c4635ee43ddd1ff86974e44ffdb",
+    "mtime": 1794165797.628358,
+    "seen": 1794171906.129119,
+    "ast_hash": "f159d23c9622a0bd8b698cea6475dddd",
     "semantic_hash": ""
   },
   "ROADMAP.md": {
@@ -30,9 +30,9 @@
     "semantic_hash": ""
   },
   "docs/STATE.md": {
-    "mtime": 1794159364.0068405,
-    "seen": 1794159378.418196,
-    "ast_hash": "78f4b536490ac3055cf6e4de51723609",
+    "mtime": 1794176098.3030643,
+    "seen": 1794176109.4854932,
+    "ast_hash": "f2b2468a47d845ae1a667dc0317fdb23",
     "semantic_hash": ""
   },
   "docs/STYLE_GUIDE.md": {
@@ -48,68 +48,68 @@
     "semantic_hash": ""
   },
   "assets/sprites/buildings/command_center.png": {
-    "mtime": 1794154234.1135902,
-    "seen": 1794156457.591261,
+    "mtime": 1794175123.4810054,
+    "seen": 1794176109.4855237,
     "ast_hash": "64b56238dfb06bb5c149ccb230d7418e",
     "semantic_hash": ""
   },
   "assets/sprites/buildings/conveyor.png": {
-    "mtime": 1794154234.373404,
-    "seen": 1794156457.5912673,
+    "mtime": 1794175123.7488823,
+    "seen": 1794176109.4855301,
     "ast_hash": "7caee1db34107a9abf9172b165b0d37e",
     "semantic_hash": ""
   },
   "assets/sprites/buildings/excavation_rig.png": {
-    "mtime": 1794154234.3528595,
-    "seen": 1794156457.591274,
+    "mtime": 1794175123.7242465,
+    "seen": 1794176109.485542,
     "ast_hash": "a12b0b00d3021641f310ec753ed0c5ce",
     "semantic_hash": ""
   },
   "assets/sprites/buildings/factory.png": {
-    "mtime": 1794154234.27306,
-    "seen": 1794156457.5912824,
+    "mtime": 1794175123.6418686,
+    "seen": 1794176109.4855478,
     "ast_hash": "78d173d71070bfee1631eddf3cc60f00",
     "semantic_hash": ""
   },
   "assets/sprites/buildings/fusion_reactor.png": {
-    "mtime": 1794154234.155642,
-    "seen": 1794156457.5912886,
+    "mtime": 1794175123.5383608,
+    "seen": 1794176109.4855537,
     "ast_hash": "a9970567aa294ef528e6f3d9afc22464",
     "semantic_hash": ""
   },
   "assets/sprites/buildings/habitation_block.png": {
-    "mtime": 1794154234.2980993,
-    "seen": 1794156457.5912943,
+    "mtime": 1794175123.662614,
+    "seen": 1794176109.4855587,
     "ast_hash": "4e6938c437629d06a8dc2655e6add4c4",
     "semantic_hash": ""
   },
   "assets/sprites/buildings/power_cable.png": {
-    "mtime": 1794154234.363057,
-    "seen": 1794156457.5912993,
+    "mtime": 1794175123.734949,
+    "seen": 1794176109.4855769,
     "ast_hash": "59eeef477da0620b28183e3b60d2d8f0",
     "semantic_hash": ""
   },
   "assets/sprites/buildings/quarry.png": {
-    "mtime": 1794154234.2077668,
-    "seen": 1794156457.5913048,
+    "mtime": 1794175123.5897374,
+    "seen": 1794176109.4855824,
     "ast_hash": "03c18b33808d7a536f9e6850f8f17a43",
     "semantic_hash": ""
   },
   "assets/sprites/buildings/shaft_elevator.png": {
-    "mtime": 1794154234.4091513,
-    "seen": 1794156457.5913105,
+    "mtime": 1794175123.7947502,
+    "seen": 1794176109.4855983,
     "ast_hash": "f0c2d43d416af53b17af997c08b5f0c4",
     "semantic_hash": ""
   },
   "assets/sprites/buildings/support_pillar.png": {
-    "mtime": 1794154234.3206031,
-    "seen": 1794156457.5913162,
+    "mtime": 1794175123.6825874,
+    "seen": 1794176109.4856083,
     "ast_hash": "c99f59d24bda973281cdae728f90ee0a",
     "semantic_hash": ""
   },
   "assets/sprites/buildings/warehouse.png": {
-    "mtime": 1794154234.4493172,
-    "seen": 1794156457.5913217,
+    "mtime": 1794175123.856639,
+    "seen": 1794176109.4856138,
     "ast_hash": "4f48b158940475015596f7d698ea4a3d",
     "semantic_hash": ""
   },
@@ -267,6 +267,114 @@
     "mtime": 1794157321.7384589,
     "seen": 1794158594.657451,
     "ast_hash": "dbff7dda7bdfa31ec7046ed63eb5eaf0",
+    "semantic_hash": ""
+  },
+  "assets/sprites/buildings/autocannon_turret.png": {
+    "mtime": 1794175123.8967109,
+    "seen": 1794176109.4855165,
+    "ast_hash": "889be0e5f2b085c448e9cbe0dfdcab7a",
+    "semantic_hash": ""
+  },
+  "assets/sprites/buildings/defense_wall.png": {
+    "mtime": 1794175123.8774452,
+    "seen": 1794176109.485536,
+    "ast_hash": "fba857cb3d9193773a2fb9a0c7a63240",
+    "semantic_hash": ""
+  },
+  "assets/sprites/buildings/heavy_railgun.png": {
+    "mtime": 1794175123.945753,
+    "seen": 1794176109.485565,
+    "ast_hash": "e36f5a2c94be3f81708ffd274dc4a0a6",
+    "semantic_hash": ""
+  },
+  "assets/sprites/buildings/munitions_factory.png": {
+    "mtime": 1794175124.0251024,
+    "seen": 1794176109.4855711,
+    "ast_hash": "5064252f0597ab1e55655eb0e8f96909",
+    "semantic_hash": ""
+  },
+  "assets/sprites/buildings/repair_depot.png": {
+    "mtime": 1794175124.07505,
+    "seen": 1794176109.4855876,
+    "ast_hash": "7e3f0ed5789abb7ae8422e9bebe7577b",
+    "semantic_hash": ""
+  },
+  "assets/sprites/buildings/sensor_tower.png": {
+    "mtime": 1794175124.0409298,
+    "seen": 1794176109.4855928,
+    "ast_hash": "791974503ae8045853611c66de636637",
+    "semantic_hash": ""
+  },
+  "assets/sprites/buildings/shield_generator.png": {
+    "mtime": 1794175123.9822211,
+    "seen": 1794176109.4856033,
+    "ast_hash": "b0b3c306c431c42a73bde02a95f7aa6b",
+    "semantic_hash": ""
+  },
+  "assets/sprites/buildings_backup/autocannon_turret.png": {
+    "mtime": 1794165827.550558,
+    "seen": 1794171906.1291983,
+    "ast_hash": "77128e8a79a3ba1b22551780901daacb",
+    "semantic_hash": ""
+  },
+  "assets/sprites/buildings_backup/defense_wall.png": {
+    "mtime": 1794165826.4572556,
+    "seen": 1794171906.1292048,
+    "ast_hash": "a6f3a79d7ac66ff178285b2ed7891ecb",
+    "semantic_hash": ""
+  },
+  "assets/sprites/buildings_backup/heavy_railgun.png": {
+    "mtime": 1794165828.8398163,
+    "seen": 1794171906.129215,
+    "ast_hash": "2490193553ab9902006c48679c3c7141",
+    "semantic_hash": ""
+  },
+  "assets/sprites/buildings_backup/munitions_factory.png": {
+    "mtime": 1794165831.4248917,
+    "seen": 1794171906.129217,
+    "ast_hash": "68725abac4149f8260907824c51b1c44",
+    "semantic_hash": ""
+  },
+  "assets/sprites/buildings_backup/repair_depot.png": {
+    "mtime": 1794165833.8599567,
+    "seen": 1794171906.1292233,
+    "ast_hash": "34eb89bed76cd392eaf891288f6c0d07",
+    "semantic_hash": ""
+  },
+  "assets/sprites/buildings_backup/sensor_tower.png": {
+    "mtime": 1794165832.5229175,
+    "seen": 1794171906.1292253,
+    "ast_hash": "78a85842ad603a49ea556ca70c57863c",
+    "semantic_hash": ""
+  },
+  "assets/sprites/buildings_backup/shield_generator.png": {
+    "mtime": 1794165830.100571,
+    "seen": 1794171906.1292293,
+    "ast_hash": "f9f5d418a13ff5c361a73db01299cd7b",
+    "semantic_hash": ""
+  },
+  ".github/ISSUE_TEMPLATE/bug_report.md": {
+    "mtime": 1794176759.7778473,
+    "seen": 1794176832.082234,
+    "ast_hash": "534b3ba5dba77e2ead60e07dcf401594",
+    "semantic_hash": ""
+  },
+  ".github/ISSUE_TEMPLATE/feature_request.md": {
+    "mtime": 1794176770.927765,
+    "seen": 1794176832.0822477,
+    "ast_hash": "9da0153546ac562aee827589a1e6a8b7",
+    "semantic_hash": ""
+  },
+  "CONTRIBUTING.md": {
+    "mtime": 1794176783.2689972,
+    "seen": 1794176832.0822577,
+    "ast_hash": "4d9e3194adb9fb94e54e4d09e7955b8b",
+    "semantic_hash": ""
+  },
+  "README.md": {
+    "mtime": 1794176820.3243136,
+    "seen": 1794176832.0822654,
+    "ast_hash": "9740887b753272283863662cdf5e5ddb",
     "semantic_hash": ""
   }
 }
