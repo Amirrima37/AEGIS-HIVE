@@ -1,0 +1,14 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scripts/camera/isometric_camera.gd" id="1_cam"]
+[ext_resource type="PackedScene" path="res://scenes/world/world.tscn" id="2_world"]
+[ext_resource type="PackedScene" path="res://ui/hud.tscn" id="3_hud"]
+
+[node name="Main" type="Node2D"]
+
+[node name="Camera2D" type="Camera2D" parent="."]
+script = ExtResource("1_cam")
+
+[node name="World" parent="." instance=ExtResource("2_world")]
+
+[node name="HUD" parent="." instance=ExtResource("3_hud")]

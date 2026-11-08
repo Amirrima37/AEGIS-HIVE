@@ -1,0 +1,33 @@
+[gd_resource type="Resource" script_class="BuildingData" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/buildings/building_data.gd" id="1_script"]
+[ext_resource type="Texture2D" path="res://assets/sprites/buildings/habitation_block.png" id="2_sprite"]
+
+[resource]
+script = ExtResource("1_script")
+id = &"habitation_block"
+display_name = "Жилой блок"
+description = "Модули жизнеобеспечения для размещения инженеров и персонала."
+icon = ExtResource("2_sprite")
+sprite = ExtResource("2_sprite")
+tile_size = Vector2i(1, 1)
+cost_ore = 15
+cost_materials = 10
+cost_energy_initial = 0
+energy_production = 0
+energy_consumption = 2
+ore_production = 0
+ore_consumption = 0
+materials_production = 0
+materials_consumption = 0
+population_capacity = 20
+max_hp = 100
+allowed_layers = "any"
+is_structural = false
+unlocks_layer_above = false
+unlocks_layer_below = false
+network_type = "power_consumer"
+is_connector = false
+connection_range = 1
+throughput = 0
+connects_layers = false

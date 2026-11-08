@@ -1,0 +1,33 @@
+[gd_resource type="Resource" script_class="BuildingData" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/buildings/building_data.gd" id="1_script"]
+[ext_resource type="Texture2D" path="res://assets/sprites/buildings/support_pillar.png" id="2_sprite"]
+
+[resource]
+script = ExtResource("1_script")
+id = &"support_pillar"
+display_name = "Опорная колонна"
+description = "Массивная несущая колонна. Необходима для строительства платформ уровнем выше."
+icon = ExtResource("2_sprite")
+sprite = ExtResource("2_sprite")
+tile_size = Vector2i(1, 1)
+cost_ore = 10
+cost_materials = 25
+cost_energy_initial = 0
+energy_production = 0
+energy_consumption = 0
+ore_production = 0
+ore_consumption = 0
+materials_production = 0
+materials_consumption = 0
+population_capacity = 0
+max_hp = 400
+allowed_layers = "any"
+is_structural = true
+unlocks_layer_above = true
+unlocks_layer_below = false
+network_type = "none"
+is_connector = false
+connection_range = 1
+throughput = 0
+connects_layers = false

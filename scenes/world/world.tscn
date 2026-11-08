@@ -1,0 +1,46 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scripts/world/world.gd" id="1_world"]
+[ext_resource type="Script" path="res://scripts/world/layer_manager.gd" id="2_lm"]
+[ext_resource type="Script" path="res://scripts/buildings/building_manager.gd" id="3_bm"]
+[ext_resource type="Script" path="res://scripts/buildings/occupancy_grid.gd" id="4_og"]
+[ext_resource type="Script" path="res://scripts/networks/network_manager.gd" id="5_nm"]
+[ext_resource type="Script" path="res://scripts/networks/power_grid.gd" id="6_pg"]
+[ext_resource type="Script" path="res://scripts/networks/supply_chain.gd" id="7_sc"]
+[ext_resource type="Script" path="res://scripts/networks/shaft_elevator.gd" id="8_se"]
+[ext_resource type="Script" path="res://scripts/networks/network_overlay.gd" id="9_no"]
+[ext_resource type="Script" path="res://scripts/buildings/building_placer.gd" id="10_bp"]
+[ext_resource type="Script" path="res://scripts/economy/tick_manager.gd" id="11_tm"]
+
+[node name="World" type="Node2D"]
+script = ExtResource("1_world")
+
+[node name="LayerManager" type="Node2D" parent="."]
+script = ExtResource("2_lm")
+
+[node name="BuildingManager" type="Node2D" parent="."]
+script = ExtResource("3_bm")
+
+[node name="OccupancyGrid" type="Node" parent="BuildingManager"]
+script = ExtResource("4_og")
+
+[node name="NetworkManager" type="Node2D" parent="."]
+script = ExtResource("5_nm")
+
+[node name="ShaftElevator" type="Node" parent="NetworkManager"]
+script = ExtResource("8_se")
+
+[node name="PowerGrid" type="Node" parent="NetworkManager"]
+script = ExtResource("6_pg")
+
+[node name="SupplyChain" type="Node" parent="NetworkManager"]
+script = ExtResource("7_sc")
+
+[node name="NetworkOverlay" type="Node2D" parent="."]
+script = ExtResource("9_no")
+
+[node name="BuildingPlacer" type="Node2D" parent="."]
+script = ExtResource("10_bp")
+
+[node name="TickManager" type="Node" parent="."]
+script = ExtResource("11_tm")
