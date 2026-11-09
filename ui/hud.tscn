@@ -6,6 +6,7 @@
 [ext_resource type="Script" path="res://ui/build_toolbar.gd" id="4_toolbar"]
 [ext_resource type="Script" path="res://ui/speed_control.gd" id="5_speed"]
 [ext_resource type="Script" path="res://ui/overlay_toggle.gd" id="6_overlay"]
+[ext_resource type="Script" path="res://ui/command_panel.gd" id="7_cmd"]
 
 [node name="HUD" type="CanvasLayer"]
 script = ExtResource("1_hud")
@@ -18,180 +19,251 @@ grow_horizontal = 2
 
 [node name="MarginContainer" type="MarginContainer" parent="TopBar"]
 layout_mode = 2
-theme_override_constants/margin_left = 20
-theme_override_constants/margin_top = 8
-theme_override_constants/margin_right = 20
-theme_override_constants/margin_bottom = 8
+theme_override_constants/margin_left = 16
+theme_override_constants/margin_top = 6
+theme_override_constants/margin_right = 16
+theme_override_constants/margin_bottom = 6
 
 [node name="HBoxContainer" type="HBoxContainer" parent="TopBar/MarginContainer"]
 layout_mode = 2
-theme_override_constants/separation = 30
+theme_override_constants/separation = 16
 
 [node name="ProjectTitle" type="Label" parent="TopBar/MarginContainer/HBoxContainer"]
 layout_mode = 2
-theme_override_colors/font_color = Color(0.3, 0.8, 1, 1)
-text = "PROJECT: AEGIS-HIVE [v0.2 - СТРОИТЕЛЬСТВО]"
+theme_override_colors/font_color = Color(0.9, 0.95, 1, 1)
+text = "AEGIS-HIVE"
 
 [node name="Separator" type="VSeparator" parent="TopBar/MarginContainer/HBoxContainer"]
 layout_mode = 2
 
 [node name="ResEnergy" type="Label" parent="TopBar/MarginContainer/HBoxContainer"]
 layout_mode = 2
-text = "⚡ Энергия: 100 МВт"
+text = "⚡ 100 МВт"
 
 [node name="ResOre" type="Label" parent="TopBar/MarginContainer/HBoxContainer"]
 layout_mode = 2
-text = "⛏ Руда: 50 т"
+text = "⛏ 50 т"
 
 [node name="ResMaterials" type="Label" parent="TopBar/MarginContainer/HBoxContainer"]
 layout_mode = 2
-text = "🏗 Материалы: 30 т"
+text = "🏗 30 т"
+
+[node name="ResAmmo" type="Label" parent="TopBar/MarginContainer/HBoxContainer"]
+layout_mode = 2
+text = "🪖 Боеприпасы: 0"
 
 [node name="ResPopulation" type="Label" parent="TopBar/MarginContainer/HBoxContainer"]
 layout_mode = 2
-text = "👥 Персонал: 10"
+text = "👥 10 / 50"
 
 [node name="Separator2" type="VSeparator" parent="TopBar/MarginContainer/HBoxContainer"]
 layout_mode = 2
+
+[node name="WaveCountdown" type="Label" parent="TopBar/MarginContainer/HBoxContainer"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.95, 0.55, 0.55, 1)
+text = "⚠️ ВОЛНА 00: 00:00 [УГРОЗА: НЕТ]"
+
+[node name="Spacer" type="Control" parent="TopBar/MarginContainer/HBoxContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="DirectiveStatusBadge" type="Label" parent="TopBar/MarginContainer/HBoxContainer"]
+visible = false
+layout_mode = 2
+text = "⚡ ПЕРЕБРОС"
 
 [node name="BtnGameMode" type="Button" parent="TopBar/MarginContainer/HBoxContainer"]
 layout_mode = 2
 text = "🛠 Режим: Стандарт [F3]"
 
 [node name="LayerIndicator" type="PanelContainer" parent="."]
-anchors_preset = 5
-anchor_left = 0.5
-anchor_right = 0.5
-offset_left = -170.0
-offset_top = 54.0
-offset_right = 170.0
-offset_bottom = 98.0
-grow_horizontal = 2
+anchors_preset = 6
+anchor_left = 1.0
+anchor_top = 0.5
+anchor_right = 1.0
+anchor_bottom = 0.5
+offset_left = -224.0
+offset_top = -145.0
+offset_right = -16.0
+offset_bottom = 145.0
+grow_horizontal = 0
+grow_vertical = 2
 script = ExtResource("2_layer_ind")
 
 [node name="MarginContainer" type="MarginContainer" parent="LayerIndicator"]
 layout_mode = 2
-theme_override_constants/margin_left = 12
-theme_override_constants/margin_top = 4
-theme_override_constants/margin_right = 12
-theme_override_constants/margin_bottom = 4
+theme_override_constants/margin_left = 8
+theme_override_constants/margin_top = 8
+theme_override_constants/margin_right = 8
+theme_override_constants/margin_bottom = 8
 
-[node name="HBoxContainer" type="HBoxContainer" parent="LayerIndicator/MarginContainer"]
+[node name="VBoxContainer" type="VBoxContainer" parent="LayerIndicator/MarginContainer"]
 layout_mode = 2
-theme_override_constants/separation = 12
+theme_override_constants/separation = 4
 alignment = 1
 
-[node name="BtnUp" type="Button" parent="LayerIndicator/MarginContainer/HBoxContainer"]
-custom_minimum_size = Vector2(80, 0)
+[node name="LabelHeader" type="Label" parent="LayerIndicator/MarginContainer/VBoxContainer"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.55, 0.6, 0.7, 1)
+theme_override_font_sizes/font_size = 11
+text = "ЯРУСЫ УЛЬЯ"
+horizontal_alignment = 1
+
+[node name="BtnAddAbove" type="Button" parent="LayerIndicator/MarginContainer/VBoxContainer"]
+custom_minimum_size = Vector2(188, 26)
+layout_mode = 2
+text = "+ Ярус [Shift+Q]"
+
+[node name="BtnUp" type="Button" parent="LayerIndicator/MarginContainer/VBoxContainer"]
+custom_minimum_size = Vector2(188, 26)
 layout_mode = 2
 text = "▲ [Q] Вверх"
 
-[node name="LabelLayerName" type="Label" parent="LayerIndicator/MarginContainer/HBoxContainer"]
-custom_minimum_size = Vector2(160, 0)
+[node name="LabelLayerName" type="Label" parent="LayerIndicator/MarginContainer/VBoxContainer"]
+custom_minimum_size = Vector2(188, 32)
 layout_mode = 2
 theme_override_colors/font_color = Color(0.9, 0.95, 1, 1)
-text = "ПОВЕРХНОСТЬ [z=0]"
+text = "ПОВЕРХНОСТЬ
+[z=0]"
 horizontal_alignment = 1
 
-[node name="BtnDown" type="Button" parent="LayerIndicator/MarginContainer/HBoxContainer"]
-custom_minimum_size = Vector2(80, 0)
+[node name="LayersScroll" type="ScrollContainer" parent="LayerIndicator/MarginContainer/VBoxContainer"]
+custom_minimum_size = Vector2(188, 88)
+layout_mode = 2
+horizontal_scroll_mode = 0
+
+[node name="LayersList" type="VBoxContainer" parent="LayerIndicator/MarginContainer/VBoxContainer/LayersScroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 4
+
+[node name="BtnDown" type="Button" parent="LayerIndicator/MarginContainer/VBoxContainer"]
+custom_minimum_size = Vector2(188, 26)
 layout_mode = 2
 text = "▼ [E] Вниз"
 
-[node name="SpeedControl" type="PanelContainer" parent="."]
-anchors_preset = 3
-anchor_left = 1.0
-anchor_top = 1.0
-anchor_right = 1.0
+[node name="BtnAddBelow" type="Button" parent="LayerIndicator/MarginContainer/VBoxContainer"]
+custom_minimum_size = Vector2(188, 26)
+layout_mode = 2
+text = "+ Геофронт [Shift+E]"
+
+[node name="StatusLabel" type="Label" parent="LayerIndicator/MarginContainer/VBoxContainer"]
+visible = false
+layout_mode = 2
+theme_override_font_sizes/font_size = 11
+horizontal_alignment = 1
+autowrap_mode = 2
+
+[node name="CommandPanel" type="PanelContainer" parent="."]
+anchor_top = 0.5
 anchor_bottom = 1.0
-offset_left = -230.0
-offset_top = -436.0
+offset_left = 16.0
+offset_right = 372.0
+offset_bottom = -72.0
+grow_vertical = 0
+script = ExtResource("7_cmd")
+
+[node name="OverlayToggle" type="PanelContainer" parent="."]
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -204.0
+offset_top = 54.0
 offset_right = -16.0
-offset_bottom = -392.0
+offset_bottom = 250.0
 grow_horizontal = 0
+script = ExtResource("6_overlay")
+
+[node name="MarginContainer" type="MarginContainer" parent="OverlayToggle"]
+layout_mode = 2
+theme_override_constants/margin_left = 6
+theme_override_constants/margin_top = 6
+theme_override_constants/margin_right = 6
+theme_override_constants/margin_bottom = 6
+
+[node name="VBoxContainer" type="VBoxContainer" parent="OverlayToggle/MarginContainer"]
+layout_mode = 2
+theme_override_constants/separation = 6
+alignment = 1
+
+[node name="BtnPower" type="Button" parent="OverlayToggle/MarginContainer/VBoxContainer"]
+custom_minimum_size = Vector2(170, 30)
+layout_mode = 2
+text = "⚡ СЕТЬ [F1]"
+
+[node name="BtnSupply" type="Button" parent="OverlayToggle/MarginContainer/VBoxContainer"]
+custom_minimum_size = Vector2(170, 30)
+layout_mode = 2
+text = "📦 ЛОГИСТИКА [F2]"
+
+[node name="BtnIntegrity" type="Button" parent="OverlayToggle/MarginContainer/VBoxContainer"]
+custom_minimum_size = Vector2(170, 30)
+layout_mode = 2
+text = "🛡 БРОНЯ [F4]"
+
+[node name="BtnSensors" type="Button" parent="OverlayToggle/MarginContainer/VBoxContainer"]
+custom_minimum_size = Vector2(170, 30)
+layout_mode = 2
+text = "📡 РАДАР [soon]"
+
+[node name="BtnMinerals" type="Button" parent="OverlayToggle/MarginContainer/VBoxContainer"]
+custom_minimum_size = Vector2(170, 30)
+layout_mode = 2
+text = "⛏ НЕДРА [soon]"
+
+[node name="SpeedControl" type="PanelContainer" parent="."]
+anchors_preset = 2
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_left = 16.0
+offset_top = -64.0
+offset_right = 320.0
+offset_bottom = -16.0
 grow_vertical = 0
 script = ExtResource("5_speed")
 
 [node name="MarginContainer" type="MarginContainer" parent="SpeedControl"]
 layout_mode = 2
-theme_override_constants/margin_left = 6
+theme_override_constants/margin_left = 8
 theme_override_constants/margin_top = 4
-theme_override_constants/margin_right = 6
+theme_override_constants/margin_right = 8
 theme_override_constants/margin_bottom = 4
 
 [node name="HBoxContainer" type="HBoxContainer" parent="SpeedControl/MarginContainer"]
 layout_mode = 2
-theme_override_constants/separation = 4
+theme_override_constants/separation = 6
 alignment = 1
 
-[node name="BtnSpeed1" type="Button" parent="SpeedControl/MarginContainer/HBoxContainer"]
+[node name="LabelTick" type="Label" parent="SpeedControl/MarginContainer/HBoxContainer"]
+custom_minimum_size = Vector2(80, 0)
 layout_mode = 2
-size_flags_horizontal = 3
-text = "×1"
+theme_override_colors/font_color = Color(0.8, 0.85, 0.9, 1)
+text = "ТИК #0"
+vertical_alignment = 1
 
-[node name="BtnSpeed2" type="Button" parent="SpeedControl/MarginContainer/HBoxContainer"]
+[node name="Separator" type="VSeparator" parent="SpeedControl/MarginContainer/HBoxContainer"]
 layout_mode = 2
-size_flags_horizontal = 3
-text = "×2"
-
-[node name="BtnSpeed3" type="Button" parent="SpeedControl/MarginContainer/HBoxContainer"]
-layout_mode = 2
-size_flags_horizontal = 3
-text = "×3"
 
 [node name="BtnPause" type="Button" parent="SpeedControl/MarginContainer/HBoxContainer"]
+custom_minimum_size = Vector2(50, 32)
 layout_mode = 2
-size_flags_horizontal = 3
 text = "⏸"
 
-[node name="MinimapPanel" type="PanelContainer" parent="."]
-anchors_preset = 3
-anchor_left = 1.0
-anchor_top = 1.0
-anchor_right = 1.0
-anchor_bottom = 1.0
-offset_left = -230.0
-offset_top = -384.0
-offset_right = -16.0
-offset_bottom = -80.0
-grow_horizontal = 0
-grow_vertical = 0
-script = ExtResource("3_minimap")
-
-[node name="MarginContainer" type="MarginContainer" parent="MinimapPanel"]
+[node name="BtnSpeed1" type="Button" parent="SpeedControl/MarginContainer/HBoxContainer"]
+custom_minimum_size = Vector2(40, 32)
 layout_mode = 2
-theme_override_constants/margin_left = 10
-theme_override_constants/margin_top = 10
-theme_override_constants/margin_right = 10
-theme_override_constants/margin_bottom = 10
+text = "1x"
 
-[node name="VBoxContainer" type="VBoxContainer" parent="MinimapPanel/MarginContainer"]
+[node name="BtnSpeed2" type="Button" parent="SpeedControl/MarginContainer/HBoxContainer"]
+custom_minimum_size = Vector2(40, 32)
 layout_mode = 2
-theme_override_constants/separation = 8
+text = "2x"
 
-[node name="Header" type="Label" parent="MinimapPanel/MarginContainer/VBoxContainer"]
+[node name="BtnSpeed3" type="Button" parent="SpeedControl/MarginContainer/HBoxContainer"]
+custom_minimum_size = Vector2(40, 32)
 layout_mode = 2
-theme_override_colors/font_color = Color(0.4, 0.85, 1, 1)
-text = "ВЕРТИКАЛЬ УЛЬЯ"
-horizontal_alignment = 1
-
-[node name="BtnAddAbove" type="Button" parent="MinimapPanel/MarginContainer/VBoxContainer"]
-layout_mode = 2
-text = "+ Ярус выше (Shift+Q)"
-
-[node name="ScrollContainer" type="ScrollContainer" parent="MinimapPanel/MarginContainer/VBoxContainer"]
-custom_minimum_size = Vector2(0, 160)
-layout_mode = 2
-size_flags_vertical = 3
-
-[node name="LayersContainer" type="VBoxContainer" parent="MinimapPanel/MarginContainer/VBoxContainer/ScrollContainer"]
-layout_mode = 2
-size_flags_horizontal = 3
-theme_override_constants/separation = 4
-
-[node name="BtnAddBelow" type="Button" parent="MinimapPanel/MarginContainer/VBoxContainer"]
-layout_mode = 2
-text = "+ Вглубь коры (Shift+E)"
+text = "3x"
 
 [node name="BuildToolbar" type="PanelContainer" parent="."]
 anchors_preset = 7
@@ -199,77 +271,64 @@ anchor_left = 0.5
 anchor_top = 1.0
 anchor_right = 0.5
 anchor_bottom = 1.0
-offset_left = -620.0
-offset_top = -68.0
-offset_right = 620.0
-offset_bottom = -12.0
+offset_left = -465.0
+offset_top = -56.0
+offset_right = 465.0
+offset_bottom = -16.0
 grow_horizontal = 2
 grow_vertical = 0
+mouse_filter = 2
 script = ExtResource("4_toolbar")
 
-[node name="MarginContainer" type="MarginContainer" parent="BuildToolbar"]
+[node name="MinimapPanel" type="PanelContainer" parent="."]
+anchors_preset = 3
+anchor_left = 1.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -460.0
+offset_top = -320.0
+offset_right = -16.0
+offset_bottom = -16.0
+grow_horizontal = 0
+grow_vertical = 0
+script = ExtResource("3_minimap")
+
+[node name="MarginContainer" type="MarginContainer" parent="MinimapPanel"]
 layout_mode = 2
 theme_override_constants/margin_left = 10
-theme_override_constants/margin_top = 6
+theme_override_constants/margin_top = 8
 theme_override_constants/margin_right = 10
-theme_override_constants/margin_bottom = 6
+theme_override_constants/margin_bottom = 8
 
-[node name="HBoxContainer" type="HBoxContainer" parent="BuildToolbar/MarginContainer"]
+[node name="VBoxContainer" type="VBoxContainer" parent="MinimapPanel/MarginContainer"]
 layout_mode = 2
 theme_override_constants/separation = 8
-alignment = 1
 
-[node name="OverlayToggle" type="PanelContainer" parent="."]
-anchors_preset = 2
-anchor_top = 1.0
-anchor_bottom = 1.0
-offset_left = 16.0
-offset_top = -148.0
-offset_right = 340.0
-offset_bottom = -106.0
-grow_vertical = 0
-script = ExtResource("6_overlay")
-
-[node name="MarginContainer" type="MarginContainer" parent="OverlayToggle"]
+[node name="Header" type="Label" parent="MinimapPanel/MarginContainer/VBoxContainer"]
 layout_mode = 2
-theme_override_constants/margin_left = 8
-theme_override_constants/margin_top = 4
-theme_override_constants/margin_right = 8
-theme_override_constants/margin_bottom = 4
+theme_override_colors/font_color = Color(0.65, 0.72, 0.8, 1)
+text = "ТАКТИЧЕСКИЙ РАДАР [OFFLINE]"
+horizontal_alignment = 1
 
-[node name="HBoxContainer" type="HBoxContainer" parent="OverlayToggle/MarginContainer"]
+[node name="PlaceholderViewport" type="PanelContainer" parent="MinimapPanel/MarginContainer/VBoxContainer"]
 layout_mode = 2
-theme_override_constants/separation = 8
-alignment = 1
+size_flags_vertical = 3
 
-[node name="BtnPower" type="Button" parent="OverlayToggle/MarginContainer/HBoxContainer"]
+[node name="CenterContainer" type="CenterContainer" parent="MinimapPanel/MarginContainer/VBoxContainer/PlaceholderViewport"]
 layout_mode = 2
-theme_override_colors/font_color = Color(0.2, 0.9, 1, 1)
-text = "⚡ Энергосеть (F1)"
 
-[node name="BtnSupply" type="Button" parent="OverlayToggle/MarginContainer/HBoxContainer"]
+[node name="PlaceholderText" type="Label" parent="MinimapPanel/MarginContainer/VBoxContainer/PlaceholderViewport/CenterContainer"]
 layout_mode = 2
-theme_override_colors/font_color = Color(1, 0.65, 0.2, 1)
-text = "📦 Транспорт (F2)"
+theme_override_colors/font_color = Color(0.4, 0.46, 0.54, 1)
+text = "[ СЕКТОР 01: РАДАР В РАЗРАБОТКЕ ]
+ТАКТИЧЕСКИЙ СКАНЕР ОТКЛЮЧЕН
+(Место зарезервировано)"
+horizontal_alignment = 1
 
-[node name="ControlsHelp" type="PanelContainer" parent="."]
-anchors_preset = 2
-anchor_top = 1.0
-anchor_bottom = 1.0
-offset_left = 16.0
-offset_top = -100.0
-offset_right = 620.0
-offset_bottom = -72.0
-grow_vertical = 0
-
-[node name="MarginContainer" type="MarginContainer" parent="ControlsHelp"]
+[node name="StatusLabel" type="Label" parent="MinimapPanel/MarginContainer/VBoxContainer"]
 layout_mode = 2
-theme_override_constants/margin_left = 12
-theme_override_constants/margin_top = 4
-theme_override_constants/margin_right = 12
-theme_override_constants/margin_bottom = 4
-
-[node name="Label" type="Label" parent="ControlsHelp/MarginContainer"]
-layout_mode = 2
-theme_override_colors/font_color = Color(0.75, 0.8, 0.85, 0.9)
-text = "WASD / ПКМ: Камера | Q / E: Ярус | 1, 2, 3: Скорость | Space: Пауза | F1/F2: Оверлеи | ESC: Отмена"
+theme_override_colors/font_color = Color(0.4, 0.46, 0.54, 1)
+theme_override_font_sizes/font_size = 10
+text = "СТАТУС: В РЕЗЕРВЕ // СИСТЕМА НЕ АКТИВИРОВАНА"
+horizontal_alignment = 1

@@ -1,0 +1,645 @@
+"""
+Generates the updated Aegis-Hive Brutalist GUI SVG according to user specifications:
+1. Brutalist aesthetics: Translucent neutral dark gray panels with backdrop blur, dark-gray borders, NO glowing cyan sci-fi.
+2. Large Minimap at bottom-right filling the area between the build dock and right edge.
+3. Top-Right stacked buttons for Overlay views (Power, Logistics, Structural Integrity, Radar, Ore).
+4. Bottom-Left time controls (Pause, 1x, 2x, 3x, Tick).
+5. Top resource bar with Wave countdown & Threat meter.
+6. Bottom-Center 2-tier building selection (Dock + Shelf).
+"""
+import os
+
+svg_content = """<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1920 1080" width="1920" height="1080">
+  <defs>
+    <!-- Background Canvas Gradients -->
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#101317"/>
+      <stop offset="50%" stop-color="#15191f"/>
+      <stop offset="100%" stop-color="#0c0e12"/>
+    </linearGradient>
+
+    <!-- Brutalist Frosted Gray Glass Gradients -->
+    <linearGradient id="brutalistGlass" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#242932" stop-opacity="0.88"/>
+      <stop offset="100%" stop-color="#181c22" stop-opacity="0.92"/>
+    </linearGradient>
+
+    <linearGradient id="cardGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#222730" stop-opacity="0.9"/>
+      <stop offset="100%" stop-color="#1a1e25" stop-opacity="0.95"/>
+    </linearGradient>
+
+    <linearGradient id="cardActiveGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#303744" stop-opacity="0.95"/>
+      <stop offset="100%" stop-color="#232933" stop-opacity="0.98"/>
+    </linearGradient>
+
+    <linearGradient id="radarBg" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#13171e" stop-opacity="0.95"/>
+      <stop offset="100%" stop-color="#0e1116" stop-opacity="0.98"/>
+    </linearGradient>
+
+    <!-- Subtle Shadows (No glowing neon) -->
+    <filter id="panelShadow" x="-5%" y="-5%" width="110%" height="115%">
+      <feDropShadow dx="0" dy="6" stdDeviation="10" flood-color="#000000" flood-opacity="0.55"/>
+    </filter>
+
+    <filter id="cardShadow" x="-5%" y="-5%" width="110%" height="115%">
+      <feDropShadow dx="0" dy="3" stdDeviation="4" flood-color="#000000" flood-opacity="0.45"/>
+    </filter>
+
+    <!-- Pattern: Industrial Dot Grid -->
+    <pattern id="dotGrid" width="32" height="32" patternUnits="userSpaceOnUse">
+      <circle cx="2" cy="2" r="1.2" fill="#2d3542" fill-opacity="0.45"/>
+    </pattern>
+
+    <!-- Pattern: Tactical Radar Grid -->
+    <pattern id="radarGrid" width="40" height="40" patternUnits="userSpaceOnUse">
+      <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#252c38" stroke-width="0.8"/>
+    </pattern>
+  </defs>
+
+  <style>
+    .mono { font-family: 'JetBrains Mono', 'Consolas', 'Courier New', monospace; }
+    .sans { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+    .label-dim { font-size: 11px; fill: #86909e; font-weight: 500; letter-spacing: 0.5px; }
+    .val-bright { font-size: 14px; fill: #f1f5f9; font-weight: 700; }
+    .val-amber { font-size: 14px; fill: #f59e0b; font-weight: 700; }
+    .border-dark { stroke: #363d4a; stroke-width: 1.2; }
+    .border-highlight { stroke: #5b6577; stroke-width: 1.5; }
+    .border-amber { stroke: #d97706; stroke-width: 1.5; }
+  </style>
+
+  <!-- 1. BACKGROUND ENVIRONMENT (Colony Concrete Megastructure) -->
+  <rect width="1920" height="1080" fill="url(#bgGrad)"/>
+  <rect width="1920" height="1080" fill="url(#dotGrid)"/>
+
+  <!-- World Grid Lines (Subtle Isometric Concrete Slabs) -->
+  <g opacity="0.18">
+    <path d="M 0 300 L 960 780 L 1920 300" stroke="#4b5563" stroke-width="1.5" fill="none"/>
+    <path d="M 0 450 L 960 930 L 1920 450" stroke="#4b5563" stroke-width="1.5" fill="none"/>
+    <path d="M 0 600 L 960 1080 L 1920 600" stroke="#4b5563" stroke-width="1.5" fill="none"/>
+    <path d="M 320 140 L 1280 620" stroke="#374151" stroke-width="1" fill="none"/>
+    <path d="M 640 140 L 1600 620" stroke="#374151" stroke-width="1" fill="none"/>
+  </g>
+
+  <!-- In-world Sector Header Indicator -->
+  <g transform="translate(60, 80)" opacity="0.35">
+    <text class="mono" font-size="13" fill="#64748b" letter-spacing="2">СЕКТОР-01 // ТЕРРАФОРМИНГ // ВЕРХНЯЯ БРОНЕПАЛУБА L0</text>
+    <line x1="0" y1="10" x2="420" y2="10" stroke="#475569" stroke-width="1"/>
+  </g>
+
+  <!-- ========================================================================= -->
+  <!-- 2. TOP BAR: RESOURCES & ENEMY WAVE COUNTDOWN (User Requirement #5)         -->
+  <!-- ========================================================================= -->
+  <g id="TopBar" transform="translate(240, 16)" filter="url(#panelShadow)">
+    <!-- Base Panel (Frosted Slate, Dark-gray Border) -->
+    <rect width="1440" height="46" rx="4" fill="url(#brutalistGlass)" class="border-dark"/>
+
+    <!-- Sector Status Tag -->
+    <g transform="translate(14, 9)">
+      <rect width="150" height="28" rx="3" fill="#181c22" stroke="#2d333f" stroke-width="1"/>
+      <circle cx="16" cy="14" r="4" fill="#10b981"/>
+      <text class="mono" x="28" y="18" font-size="11" font-weight="700" fill="#94a3b8" letter-spacing="1">AEGIS-HIVE</text>
+      <text class="sans" x="100" y="18" font-size="10" fill="#64748b">SEC.01</text>
+    </g>
+
+    <line x1="178" y1="8" x2="178" y2="38" stroke="#2b313d" stroke-width="1.2"/>
+
+    <!-- ⚡ ЭНЕРГИЯ -->
+    <g transform="translate(194, 9)">
+      <rect width="26" height="28" rx="3" fill="#181c22" stroke="#2d333f" stroke-width="1"/>
+      <path d="M 207 14 L 202 23 L 207 23 L 205 30 L 212 21 L 207 21 Z" fill="#f59e0b" transform="translate(-194, -9)"/>
+      <text class="sans val-bright" x="34" y="15">120</text>
+      <text class="sans label-dim" x="64" y="15">/ 140 МВт</text>
+      <text class="mono" x="34" y="26" font-size="9" fill="#10b981">● СЕТЬ СТАБИЛЬНА</text>
+    </g>
+
+    <line x1="345" y1="8" x2="345" y2="38" stroke="#2b313d" stroke-width="1.2"/>
+
+    <!-- ⚙️ ЖЕЛЕЗО -->
+    <g transform="translate(360, 9)">
+      <rect width="26" height="28" rx="3" fill="#181c22" stroke="#2d333f" stroke-width="1"/>
+      <!-- Gear/Ingot Icon -->
+      <rect x="6" y="9" width="14" height="10" rx="1.5" fill="#94a3b8"/>
+      <text class="sans val-bright" x="34" y="15">1,450</text>
+      <text class="sans label-dim" x="78" y="15">(+15/т)</text>
+      <text class="mono" x="34" y="26" font-size="9" fill="#94a3b8">ЖЕЛЕЗНАЯ РУДА</text>
+    </g>
+
+    <line x1="500" y1="8" x2="500" y2="38" stroke="#2b313d" stroke-width="1.2"/>
+
+    <!-- 💎 ТИТАН -->
+    <g transform="translate(515, 9)">
+      <rect width="26" height="28" rx="3" fill="#181c22" stroke="#2d333f" stroke-width="1"/>
+      <!-- Gem/Prism Icon -->
+      <polygon points="13,7 20,13 17,21 9,21 6,13" fill="#67e8f9"/>
+      <text class="sans val-bright" x="34" y="15">820</text>
+      <text class="sans label-dim" x="64" y="15">(+8/т)</text>
+      <text class="mono" x="34" y="26" font-size="9" fill="#67e8f9">СПЛАВЫ ТИТАНА</text>
+    </g>
+
+    <line x1="640" y1="8" x2="640" y2="38" stroke="#2b313d" stroke-width="1.2"/>
+
+    <!-- 🪖 БОЕПРИПАСЫ -->
+    <g transform="translate(655, 9)">
+      <rect width="26" height="28" rx="3" fill="#181c22" stroke="#2d333f" stroke-width="1"/>
+      <!-- Bullet Icon -->
+      <path d="M 10 20 L 10 13 Q 13 8 16 13 L 16 20 Z" fill="#eab308"/>
+      <text class="sans val-bright" x="34" y="15">340</text>
+      <text class="sans label-dim" x="65" y="15">снарядов</text>
+      <text class="mono" x="34" y="26" font-size="9" fill="#eab308">СКЛАД БОЕПИТАНИЯ</text>
+    </g>
+
+    <line x1="800" y1="8" x2="800" y2="38" stroke="#2b313d" stroke-width="1.2"/>
+
+    <!-- 👥 ПЕРСОНАЛ -->
+    <g transform="translate(815, 9)">
+      <rect width="26" height="28" rx="3" fill="#181c22" stroke="#2d333f" stroke-width="1"/>
+      <circle cx="13" cy="12" r="3.5" fill="#cbd5e1"/>
+      <path d="M 7 21 Q 13 17 19 21 Z" fill="#cbd5e1"/>
+      <text class="sans val-bright" x="34" y="15">142</text>
+      <text class="sans label-dim" x="64" y="15">/ 180 раб.</text>
+      <text class="mono" x="34" y="26" font-size="9" fill="#cbd5e1">ЗАНЯТОСТЬ 79%</text>
+    </g>
+
+    <line x1="950" y1="8" x2="950" y2="38" stroke="#2b313d" stroke-width="1.2"/>
+
+    <!-- ⚠️ СЧЕТЧИК ВОЛНЫ ВРАГА (Enemy Wave Countdown Badge) -->
+    <g transform="translate(965, 8)">
+      <rect width="460" height="30" rx="3" fill="#26181b" stroke="#682933" stroke-width="1.2"/>
+      <!-- Warning Flash Light -->
+      <circle cx="18" cy="15" r="5" fill="#ef4444"/>
+      <circle cx="18" cy="15" r="2" fill="#ffffff"/>
+      <text class="mono" x="32" y="19" font-size="12" font-weight="700" fill="#fca5a5" letter-spacing="0.5">ВРАЖЕСКАЯ ВОЛНА #04:</text>
+      <text class="mono" x="220" y="20" font-size="15" font-weight="800" fill="#f87171" letter-spacing="1">02:45</text>
+      <rect x="280" y="6" width="168" height="18" rx="2" fill="#3b161e"/>
+      <text class="mono" x="290" y="19" font-size="10" font-weight="700" fill="#f87171">УГРОЗА: ВЫСОКАЯ (РОЙ)</text>
+    </g>
+  </g>
+
+  <!-- ========================================================================= -->
+  <!-- 3. TOP-RIGHT OVERLAYS STACK (User Requirement #3)                         -->
+  <!-- Buttons stacked vertically: Power, Logistics, Integrity, Sensors, Mineral -->
+  <!-- ========================================================================= -->
+  <g id="OverlayButtons" transform="translate(1850, 16)" filter="url(#panelShadow)">
+    <!-- Container Tag -->
+    <text class="mono" x="-60" y="-4" font-size="10" fill="#64748b" text-anchor="end">СЛОИ ДАННЫХ</text>
+
+    <!-- Button 1: Power Grid (Active / Highlighted with subtle amber tick) -->
+    <g transform="translate(0, 0)">
+      <rect width="52" height="46" rx="4" fill="#2b313d" stroke="#5b6577" stroke-width="1.5"/>
+      <rect x="0" y="0" width="3" height="46" rx="1.5" fill="#f59e0b"/>
+      <!-- Lightning Icon -->
+      <path d="M 28 11 L 21 23 L 27 23 L 24 33 L 33 21 L 27 21 Z" fill="#f59e0b"/>
+      <text class="mono" x="26" y="42" font-size="8" fill="#e2e8f0" text-anchor="middle">СЕТЬ</text>
+    </g>
+
+    <!-- Button 2: Logistics / Conveyor Flow -->
+    <g transform="translate(0, 52)">
+      <rect width="52" height="46" rx="4" fill="#1b2027" stroke="#333a46" stroke-width="1.2"/>
+      <!-- Conveyor / Box Flow Icon -->
+      <rect x="18" y="14" width="16" height="12" rx="2" fill="none" stroke="#94a3b8" stroke-width="1.5"/>
+      <path d="M 15 29 L 37 29" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="2 2"/>
+      <text class="mono" x="26" y="42" font-size="8" fill="#94a3b8" text-anchor="middle">ЛОГИСТ</text>
+    </g>
+
+    <!-- Button 3: Structural Integrity / Armor -->
+    <g transform="translate(0, 104)">
+      <rect width="52" height="46" rx="4" fill="#1b2027" stroke="#333a46" stroke-width="1.2"/>
+      <!-- Shield/Armor Icon -->
+      <path d="M 26 12 L 35 16 L 35 24 Q 26 31 26 33 Q 26 31 17 24 L 17 16 Z" fill="none" stroke="#94a3b8" stroke-width="1.5"/>
+      <text class="mono" x="26" y="42" font-size="8" fill="#94a3b8" text-anchor="middle">БРОНЯ</text>
+    </g>
+
+    <!-- Button 4: Sensor & Radar Range -->
+    <g transform="translate(0, 156)">
+      <rect width="52" height="46" rx="4" fill="#1b2027" stroke="#333a46" stroke-width="1.2"/>
+      <!-- Radar Waves Icon -->
+      <path d="M 20 28 A 10 10 0 0 1 32 28" fill="none" stroke="#94a3b8" stroke-width="1.5"/>
+      <path d="M 23 28 A 5 5 0 0 1 29 28" fill="none" stroke="#94a3b8" stroke-width="1.5"/>
+      <circle cx="26" cy="28" r="1.5" fill="#94a3b8"/>
+      <text class="mono" x="26" y="42" font-size="8" fill="#94a3b8" text-anchor="middle">РАДАР</text>
+    </g>
+
+    <!-- Button 5: Ore & Geological Scan -->
+    <g transform="translate(0, 208)">
+      <rect width="52" height="46" rx="4" fill="#1b2027" stroke="#333a46" stroke-width="1.2"/>
+      <!-- Pickaxe/Ore Icon -->
+      <path d="M 20 15 L 32 27 M 32 15 L 20 27" stroke="#94a3b8" stroke-width="1.5"/>
+      <text class="mono" x="26" y="42" font-size="8" fill="#94a3b8" text-anchor="middle">НЕДРА</text>
+    </g>
+  </g>
+
+  <!-- ========================================================================= -->
+  <!-- 4. LEFT LAYER SWITCHER (L0 Surface / L1 Mine)                              -->
+  <!-- ========================================================================= -->
+  <g id="LayerSwitcher" transform="translate(24, 420)" filter="url(#panelShadow)">
+    <rect width="56" height="150" rx="4" fill="url(#brutalistGlass)" class="border-dark"/>
+    <text class="mono" x="28" y="20" font-size="9" fill="#64748b" text-anchor="middle">ЯРУС</text>
+
+    <!-- L0 Surface (Active) -->
+    <g transform="translate(6, 30)">
+      <rect width="44" height="50" rx="3" fill="#2d3542" stroke="#5b6577" stroke-width="1.5"/>
+      <rect x="0" y="0" width="3" height="50" rx="1.5" fill="#f59e0b"/>
+      <text class="mono" x="22" y="24" font-size="14" font-weight="700" fill="#f8fafc" text-anchor="middle">L0</text>
+      <text class="sans" x="22" y="38" font-size="8" fill="#94a3b8" text-anchor="middle">ПОВЕРХН.</text>
+    </g>
+
+    <!-- L1 Underground Mine -->
+    <g transform="translate(6, 88)">
+      <rect width="44" height="50" rx="3" fill="#181d24" stroke="#2d3542" stroke-width="1"/>
+      <text class="mono" x="22" y="24" font-size="14" font-weight="700" fill="#64748b" text-anchor="middle">L1</text>
+      <text class="sans" x="22" y="38" font-size="8" fill="#64748b" text-anchor="middle">ШАХТА</text>
+    </g>
+  </g>
+
+  <!-- ========================================================================= -->
+  <!-- 5. BOTTOM-LEFT: TIME & SPEED CONTROLS (User Requirement #4)               -->
+  <!-- ========================================================================= -->
+  <g id="TimeControls" transform="translate(24, 1008)" filter="url(#panelShadow)">
+    <rect width="320" height="48" rx="4" fill="url(#brutalistGlass)" class="border-dark"/>
+
+    <!-- Colony Tick Display -->
+    <g transform="translate(14, 12)">
+      <text class="mono" x="0" y="14" font-size="10" fill="#64748b">ХРОНОМЕТР</text>
+      <text class="mono val-bright" x="0" y="28" font-size="13">ТИК #1,248</text>
+    </g>
+
+    <line x1="120" y1="8" x2="120" y2="40" stroke="#2b313d" stroke-width="1.2"/>
+
+    <!-- Speed Buttons: Pause, 1x, 2x, 3x -->
+    <g transform="translate(132, 9)">
+      <!-- Pause [||] -->
+      <rect x="0" y="0" width="38" height="30" rx="3" fill="#1b2027" stroke="#333a46" stroke-width="1"/>
+      <rect x="14" y="9" width="3" height="12" fill="#94a3b8"/>
+      <rect x="21" y="9" width="3" height="12" fill="#94a3b8"/>
+
+      <!-- 1x [>] -->
+      <rect x="44" y="0" width="40" height="30" rx="3" fill="#1b2027" stroke="#333a46" stroke-width="1"/>
+      <text class="mono" x="64" y="20" font-size="11" font-weight="700" fill="#94a3b8" text-anchor="middle">1x</text>
+
+      <!-- 2x [>>] -->
+      <rect x="90" y="0" width="40" height="30" rx="3" fill="#1b2027" stroke="#333a46" stroke-width="1"/>
+      <text class="mono" x="110" y="20" font-size="11" font-weight="700" fill="#94a3b8" text-anchor="middle">2x</text>
+
+      <!-- 3x [>>>] ACTIVE -->
+      <rect x="136" y="0" width="44" height="30" rx="3" fill="#2d3542" stroke="#5b6577" stroke-width="1.5"/>
+      <rect x="136" y="27" width="44" height="3" rx="1.5" fill="#f59e0b"/>
+      <text class="mono val-amber" x="158" y="20" font-size="11" text-anchor="middle">3x ●</text>
+    </g>
+  </g>
+
+  <!-- ========================================================================= -->
+  <!-- 6. BOTTOM-CENTER: MODULAR CATEGORY DOCK (Tier 1)                          -->
+  <!-- Translucent gray with dark-gray borders, industrial brutalism             -->
+  <!-- ========================================================================= -->
+  <g id="ModularDock" transform="translate(370, 1008)" filter="url(#panelShadow)">
+    <rect width="840" height="48" rx="4" fill="url(#brutalistGlass)" class="border-dark"/>
+
+    <!-- Category 1: ГОРОД -->
+    <g transform="translate(10, 6)">
+      <rect width="144" height="36" rx="3" fill="#1a1f26" stroke="#2d3542" stroke-width="1"/>
+      <!-- Icon: City/Monument -->
+      <path d="M 24 24 L 24 14 L 30 10 L 36 14 L 36 24 Z" fill="none" stroke="#94a3b8" stroke-width="1.5"/>
+      <text class="sans" x="46" y="22" font-size="12" font-weight="600" fill="#94a3b8">ГОРОД</text>
+      <text class="mono" x="118" y="22" font-size="10" fill="#64748b">[2]</text>
+    </g>
+
+    <!-- Category 2: ЭНЕРГИЯ -->
+    <g transform="translate(162, 6)">
+      <rect width="154" height="36" rx="3" fill="#1a1f26" stroke="#2d3542" stroke-width="1"/>
+      <!-- Icon: Lightning -->
+      <path d="M 28 11 L 22 21 L 27 21 L 24 27 L 32 19 L 27 19 Z" fill="#94a3b8"/>
+      <text class="sans" x="46" y="22" font-size="12" font-weight="600" fill="#94a3b8">ЭНЕРГИЯ</text>
+      <text class="mono" x="126" y="22" font-size="10" fill="#64748b">[4]</text>
+    </g>
+
+    <!-- Category 3: ЛОГИСТИКА -->
+    <g transform="translate(324, 6)">
+      <rect width="164" height="36" rx="3" fill="#1a1f26" stroke="#2d3542" stroke-width="1"/>
+      <!-- Icon: Conveyor/Node -->
+      <circle cx="22" cy="18" r="4" fill="none" stroke="#94a3b8" stroke-width="1.5"/>
+      <circle cx="34" cy="18" r="4" fill="none" stroke="#94a3b8" stroke-width="1.5"/>
+      <line x1="26" y1="18" x2="30" y2="18" stroke="#94a3b8" stroke-width="1.5"/>
+      <text class="sans" x="48" y="22" font-size="12" font-weight="600" fill="#94a3b8">ЛОГИСТИКА</text>
+      <text class="mono" x="136" y="22" font-size="10" fill="#64748b">[5]</text>
+    </g>
+
+    <!-- Category 4: ОБОРОНА (ACTIVE / OPEN) -->
+    <g transform="translate(496, 6)">
+      <rect width="168" height="36" rx="3" fill="#2d3542" stroke="#5b6577" stroke-width="1.5"/>
+      <rect x="0" y="0" width="168" height="3" rx="1.5" fill="#f59e0b"/>
+      <!-- Icon: Defense Turret / Shield -->
+      <path d="M 26 13 L 34 16 L 34 22 Q 26 27 26 29 Q 26 27 18 22 L 18 16 Z" fill="none" stroke="#f59e0b" stroke-width="1.5"/>
+      <text class="sans" x="46" y="22" font-size="12" font-weight="700" fill="#f8fafc">ОБОРОНА</text>
+      <text class="mono" x="126" y="22" font-size="10" fill="#f59e0b">[7] ▲</text>
+    </g>
+
+    <line x1="674" y1="8" x2="674" y2="40" stroke="#2b313d" stroke-width="1.2"/>
+
+    <!-- Utility: СНОС (Demolish / Bulldozer) -->
+    <g transform="translate(686, 6)">
+      <rect width="144" height="36" rx="3" fill="#24191c" stroke="#522b32" stroke-width="1.2"/>
+      <!-- Sledge/Bulldozer Icon -->
+      <path d="M 20 22 L 28 14 M 26 12 L 30 16" stroke="#f87171" stroke-width="2"/>
+      <text class="sans" x="44" y="22" font-size="12" font-weight="700" fill="#fca5a5">СНОС [X]</text>
+    </g>
+  </g>
+
+  <!-- ========================================================================= -->
+  <!-- 7. POP-UP SHELF (Tier 2: BuildShelf above active category)               -->
+  <!-- Translucent Dark Gray + Dark Borders, No Neon Sci-fi                     -->
+  <!-- ========================================================================= -->
+  <g id="BuildShelf" transform="translate(370, 744)" filter="url(#panelShadow)">
+    <!-- Main Shelf Body -->
+    <rect width="840" height="248" rx="4" fill="url(#brutalistGlass)" class="border-dark"/>
+
+    <!-- Top Sub-Tabs Row -->
+    <g transform="translate(16, 12)">
+      <!-- Tab 1: ВСЕ -->
+      <rect x="0" y="0" width="90" height="28" rx="3" fill="#1b2027" stroke="#313844" stroke-width="1"/>
+      <text class="mono" x="45" y="18" font-size="11" fill="#94a3b8" text-anchor="middle">ВСЕ (7)</text>
+
+      <!-- Tab 2: ОРУДИЯ И СТЕНЫ (Active Sub-tab) -->
+      <rect x="98" y="0" width="180" height="28" rx="3" fill="#2d3542" stroke="#5b6577" stroke-width="1.5"/>
+      <rect x="98" y="25" width="180" height="3" rx="1.5" fill="#f59e0b"/>
+      <text class="mono" x="188" y="18" font-size="11" font-weight="700" fill="#f8fafc" text-anchor="middle">ОРУДИЯ И СТЕНЫ (3)</text>
+
+      <!-- Tab 3: ЩИТЫ И ПОДДЕРЖКА -->
+      <rect x="286" y="0" width="180" height="28" rx="3" fill="#1b2027" stroke="#313844" stroke-width="1"/>
+      <text class="mono" x="376" y="18" font-size="11" fill="#94a3b8" text-anchor="middle">ЩИТЫ И ПОДДЕРЖКА (3)</text>
+
+      <!-- Tab 4: СНАБЖЕНИЕ -->
+      <rect x="474" y="0" width="140" height="28" rx="3" fill="#1b2027" stroke="#313844" stroke-width="1"/>
+      <text class="mono" x="544" y="18" font-size="11" fill="#94a3b8" text-anchor="middle">СНАБЖЕНИЕ (1)</text>
+
+      <!-- Close Button [X] at far right -->
+      <g transform="translate(784, 0)">
+        <rect width="28" height="28" rx="3" fill="#22181b" stroke="#48242b" stroke-width="1"/>
+        <path d="M 9 9 L 19 19 M 19 9 L 9 19" stroke="#94a3b8" stroke-width="1.5"/>
+      </g>
+    </g>
+
+    <line x1="16" y1="48" x2="824" y2="48" stroke="#2c333e" stroke-width="1"/>
+
+    <!-- ======================================================================= -->
+    <!-- Grid of Building Cards (7 Slots, Brutalist Square Tiles)                -->
+    <!-- ======================================================================= -->
+    <g transform="translate(16, 58)">
+
+      <!-- Card 1: Автопушка (SELECTED - Dark Graphite + Amber Header Line) -->
+      <g transform="translate(0, 0)" filter="url(#cardShadow)">
+        <rect width="108" height="174" rx="3" fill="url(#cardActiveGrad)" stroke="#5b6577" stroke-width="1.8"/>
+        <rect x="0" y="0" width="108" height="3" rx="1.5" fill="#f59e0b"/>
+        
+        <!-- Thumbnail Viewport -->
+        <rect x="8" y="10" width="92" height="74" rx="2" fill="#13171e" stroke="#252c38" stroke-width="1"/>
+        <!-- Turret Stylized Geometry -->
+        <circle cx="54" cy="48" r="18" fill="#2d3542" stroke="#4b5563" stroke-width="1.5"/>
+        <rect x="51" y="24" width="6" height="24" fill="#94a3b8"/>
+        <rect x="42" y="32" width="24" height="8" rx="1" fill="#475569"/>
+
+        <!-- Building Name -->
+        <text class="sans" x="54" y="102" font-size="11" font-weight="700" fill="#f8fafc" text-anchor="middle">АВТОПУШКА</text>
+        <text class="mono" x="54" y="116" font-size="9" fill="#94a3b8" text-anchor="middle">МК-1 • ПВО</text>
+
+        <!-- Cost Badges -->
+        <rect x="8" y="126" width="92" height="18" rx="2" fill="#181d24" stroke="#2a323d" stroke-width="0.8"/>
+        <text class="mono" x="14" y="139" font-size="9" fill="#f59e0b">⚡ 15 МВт</text>
+        <rect x="8" y="148" width="92" height="18" rx="2" fill="#181d24" stroke="#2a323d" stroke-width="0.8"/>
+        <text class="mono" x="14" y="161" font-size="9" fill="#94a3b8">⚙️ 100 РУД</text>
+      </g>
+
+      <!-- Card 2: Тяж. Рельсотрон -->
+      <g transform="translate(118, 0)">
+        <rect width="108" height="174" rx="3" fill="url(#cardGrad)" stroke="#2f3744" stroke-width="1.2"/>
+        <rect x="8" y="10" width="92" height="74" rx="2" fill="#13171e" stroke="#252c38" stroke-width="1"/>
+        <!-- Railgun Graphic -->
+        <rect x="50" y="18" width="8" height="34" fill="#64748b"/>
+        <rect x="40" y="44" width="28" height="16" fill="#334155"/>
+        <text class="sans" x="54" y="102" font-size="11" font-weight="600" fill="#cbd5e1" text-anchor="middle">РЕЛЬСОТРОН</text>
+        <text class="mono" x="54" y="116" font-size="9" fill="#64748b" text-anchor="middle">ТЯЖЕЛЫЙ</text>
+        <rect x="8" y="126" width="92" height="18" rx="2" fill="#14181f"/>
+        <text class="mono" x="14" y="139" font-size="9" fill="#f59e0b">⚡ 50 МВт</text>
+        <rect x="8" y="148" width="92" height="18" rx="2" fill="#14181f"/>
+        <text class="mono" x="14" y="161" font-size="9" fill="#94a3b8">⚙️ 250 / 💎80</text>
+      </g>
+
+      <!-- Card 3: Стена укрепления -->
+      <g transform="translate(236, 0)">
+        <rect width="108" height="174" rx="3" fill="url(#cardGrad)" stroke="#2f3744" stroke-width="1.2"/>
+        <rect x="8" y="10" width="92" height="74" rx="2" fill="#13171e" stroke="#252c38" stroke-width="1"/>
+        <!-- Wall Graphic -->
+        <polygon points="26,56 46,36 82,36 62,56" fill="#475569"/>
+        <polygon points="26,56 62,56 62,64 26,64" fill="#334155"/>
+        <text class="sans" x="54" y="102" font-size="11" font-weight="600" fill="#cbd5e1" text-anchor="middle">СТЕНА БРОНИ</text>
+        <text class="mono" x="54" y="116" font-size="9" fill="#64748b" text-anchor="middle">ФОРТИФИКАЦИЯ</text>
+        <rect x="8" y="126" width="92" height="18" rx="2" fill="#14181f"/>
+        <text class="mono" x="14" y="139" font-size="9" fill="#64748b">⚡ 0 МВт</text>
+        <rect x="8" y="148" width="92" height="18" rx="2" fill="#14181f"/>
+        <text class="mono" x="14" y="161" font-size="9" fill="#94a3b8">⚙️ 40 РУД</text>
+      </g>
+
+      <!-- Card 4: Генератор щита -->
+      <g transform="translate(354, 0)">
+        <rect width="108" height="174" rx="3" fill="url(#cardGrad)" stroke="#2f3744" stroke-width="1.2"/>
+        <rect x="8" y="10" width="92" height="74" rx="2" fill="#13171e" stroke="#252c38" stroke-width="1"/>
+        <!-- Shield Dome Graphic -->
+        <path d="M 28 56 A 26 26 0 0 1 80 56 Z" fill="none" stroke="#67e8f9" stroke-width="1.5" stroke-dasharray="3 2"/>
+        <circle cx="54" cy="54" r="8" fill="#334155"/>
+        <text class="sans" x="54" y="102" font-size="11" font-weight="600" fill="#cbd5e1" text-anchor="middle">ГЕНЕРАТОР</text>
+        <text class="mono" x="54" y="116" font-size="9" fill="#64748b" text-anchor="middle">СИЛОВОЙ ЩИТ</text>
+        <rect x="8" y="126" width="92" height="18" rx="2" fill="#14181f"/>
+        <text class="mono" x="14" y="139" font-size="9" fill="#f59e0b">⚡ 40 МВт</text>
+        <rect x="8" y="148" width="92" height="18" rx="2" fill="#14181f"/>
+        <text class="mono" x="14" y="161" font-size="9" fill="#94a3b8">⚙️ 180 / 💎50</text>
+      </g>
+
+      <!-- Card 5: Сенсорная вышка -->
+      <g transform="translate(472, 0)">
+        <rect width="108" height="174" rx="3" fill="url(#cardGrad)" stroke="#2f3744" stroke-width="1.2"/>
+        <rect x="8" y="10" width="92" height="74" rx="2" fill="#13171e" stroke="#252c38" stroke-width="1"/>
+        <!-- Radar Mast Graphic -->
+        <line x1="54" y1="26" x2="54" y2="60" stroke="#94a3b8" stroke-width="2"/>
+        <path d="M 42 34 A 14 14 0 0 1 66 34" fill="none" stroke="#94a3b8" stroke-width="1.5"/>
+        <text class="sans" x="54" y="102" font-size="11" font-weight="600" fill="#cbd5e1" text-anchor="middle">СЕНСОР</text>
+        <text class="mono" x="54" y="116" font-size="9" fill="#64748b" text-anchor="middle">РАДАР ВЫШКА</text>
+        <rect x="8" y="126" width="92" height="18" rx="2" fill="#14181f"/>
+        <text class="mono" x="14" y="139" font-size="9" fill="#f59e0b">⚡ 10 МВт</text>
+        <rect x="8" y="148" width="92" height="18" rx="2" fill="#14181f"/>
+        <text class="mono" x="14" y="161" font-size="9" fill="#94a3b8">⚙️ 80 РУД</text>
+      </g>
+
+      <!-- Card 6: Ремонтное депо -->
+      <g transform="translate(590, 0)">
+        <rect width="108" height="174" rx="3" fill="url(#cardGrad)" stroke="#2f3744" stroke-width="1.2"/>
+        <rect x="8" y="10" width="92" height="74" rx="2" fill="#13171e" stroke="#252c38" stroke-width="1"/>
+        <!-- Repair Wrench Graphic -->
+        <path d="M 44 32 L 64 52 M 60 36 L 56 32" stroke="#94a3b8" stroke-width="2"/>
+        <text class="sans" x="54" y="102" font-size="11" font-weight="600" fill="#cbd5e1" text-anchor="middle">РЕМОНТ ДЕПО</text>
+        <text class="mono" x="54" y="116" font-size="9" fill="#64748b" text-anchor="middle">АВТОРЕМОНТ</text>
+        <rect x="8" y="126" width="92" height="18" rx="2" fill="#14181f"/>
+        <text class="mono" x="14" y="139" font-size="9" fill="#f59e0b">⚡ 25 МВт</text>
+        <rect x="8" y="148" width="92" height="18" rx="2" fill="#14181f"/>
+        <text class="mono" x="14" y="161" font-size="9" fill="#94a3b8">⚙️ 120 РУД</text>
+      </g>
+
+      <!-- Card 7: Завод боеприпасов -->
+      <g transform="translate(708, 0)">
+        <rect width="100" height="174" rx="3" fill="url(#cardGrad)" stroke="#2f3744" stroke-width="1.2"/>
+        <rect x="6" y="10" width="88" height="74" rx="2" fill="#13171e" stroke="#252c38" stroke-width="1"/>
+        <!-- Munitions Crate Graphic -->
+        <rect x="28" y="34" width="44" height="26" fill="#475569" stroke="#64748b" stroke-width="1.2"/>
+        <line x1="28" y1="47" x2="72" y2="47" stroke="#334155" stroke-width="1"/>
+        <text class="sans" x="50" y="102" font-size="11" font-weight="600" fill="#cbd5e1" text-anchor="middle">ЗАВОД СНАР.</text>
+        <text class="mono" x="50" y="116" font-size="9" fill="#64748b" text-anchor="middle">ПРОИЗВОДСТВО</text>
+        <rect x="6" y="126" width="88" height="18" rx="2" fill="#14181f"/>
+        <text class="mono" x="12" y="139" font-size="9" fill="#f59e0b">⚡ 20 МВт</text>
+        <rect x="6" y="148" width="88" height="18" rx="2" fill="#14181f"/>
+        <text class="mono" x="12" y="161" font-size="9" fill="#94a3b8">⚙️ 150 РУД</text>
+      </g>
+    </g>
+  </g>
+
+  <!-- ========================================================================= -->
+  <!-- 8. BUILDING INSPECTOR TOOLTIP (Anchored above active card)                -->
+  <!-- ========================================================================= -->
+  <g id="InspectorTooltip" transform="translate(370, 580)" filter="url(#panelShadow)">
+    <rect width="360" height="152" rx="4" fill="url(#brutalistGlass)" class="border-dark"/>
+    
+    <!-- Header -->
+    <g transform="translate(14, 14)">
+      <rect width="28" height="28" rx="3" fill="#181d24" stroke="#5b6577" stroke-width="1.2"/>
+      <circle cx="14" cy="14" r="5" fill="#f59e0b"/>
+      <text class="sans" x="38" y="14" font-size="13" font-weight="700" fill="#f8fafc">АВТОПУШКА (МК-1)</text>
+      <text class="mono" x="38" y="27" font-size="10" fill="#94a3b8">ТУРЕЛЬ ПВО И ПЕХОТЫ • СЕКТОР ОБОРОНЫ</text>
+    </g>
+
+    <line x1="14" y1="52" x2="346" y2="52" stroke="#2b323e" stroke-width="1"/>
+
+    <!-- Description -->
+    <text class="sans" x="14" y="70" font-size="11" fill="#cbd5e1">Скорострельная автоматическая турель с круговым сектором.</text>
+    <text class="sans" x="14" y="86" font-size="11" fill="#cbd5e1">Эффективна против роя. Требует энергосеть и склад патронов.</text>
+
+    <!-- Stats Badges -->
+    <g transform="translate(14, 104)">
+      <rect width="102" height="34" rx="3" fill="#161b22" stroke="#28303d" stroke-width="1"/>
+      <text class="mono label-dim" x="8" y="14">ДАЛЬНОСТЬ</text>
+      <text class="mono val-bright" x="8" y="28">8 тайлов</text>
+
+      <rect x="110" y="0" width="102" height="34" rx="3" fill="#161b22" stroke="#28303d" stroke-width="1"/>
+      <text class="mono label-dim" x="118" y="14">УРОН В СЕК.</text>
+      <text class="mono val-amber" x="118" y="28">144 DPS</text>
+
+      <rect x="220" y="0" width="112" height="34" rx="3" fill="#161b22" stroke="#28303d" stroke-width="1"/>
+      <text class="mono label-dim" x="228" y="14">РАСХОД ПАТР.</text>
+      <text class="mono val-bright" x="228" y="28">1 / выстрел</text>
+    </g>
+  </g>
+
+  <!-- ========================================================================= -->
+  <!-- 9. LARGE TACTICAL RADAR / MINIMAP (User Requirement #2)                   -->
+  <!-- Fills bottom-right space between BuildShelf and right edge (x: 1230..1896)-->
+  <!-- ========================================================================= -->
+  <g id="TacticalRadar" transform="translate(1230, 680)" filter="url(#panelShadow)">
+    <!-- Main Radar Frame (666 x 376 px) -->
+    <rect width="666" height="376" rx="4" fill="url(#radarBg)" class="border-dark"/>
+
+    <!-- Radar Header Bar -->
+    <g transform="translate(14, 12)">
+      <rect width="130" height="24" rx="3" fill="#181d24" stroke="#2d3542" stroke-width="1"/>
+      <circle cx="12" cy="12" r="3.5" fill="#10b981"/>
+      <text class="mono" x="22" y="16" font-size="10" font-weight="700" fill="#94a3b8">РАДАР L0 // ОНЛАЙН</text>
+
+      <text class="mono" x="150" y="16" font-size="11" fill="#64748b">КООРД: 45.2° N, 12.8° E  |  МАСШТАБ 1:500</text>
+
+      <!-- Zoom / Layer Controls inside Radar -->
+      <g transform="translate(560, 0)">
+        <rect width="24" height="24" rx="2" fill="#1e242d" stroke="#333b47" stroke-width="1"/>
+        <text class="mono" x="12" y="17" font-size="14" fill="#94a3b8" text-anchor="middle">+</text>
+        <rect x="28" y="0" width="24" height="24" rx="2" fill="#1e242d" stroke="#333b47" stroke-width="1"/>
+        <text class="mono" x="40" y="16" font-size="14" fill="#94a3b8" text-anchor="middle">-</text>
+        <rect x="56" y="0" width="24" height="24" rx="2" fill="#1e242d" stroke="#333b47" stroke-width="1"/>
+        <text class="mono" x="68" y="16" font-size="11" fill="#94a3b8" text-anchor="middle">⌖</text>
+      </g>
+    </g>
+
+    <line x1="14" y1="44" x2="652" y2="44" stroke="#252d38" stroke-width="1"/>
+
+    <!-- Radar Tactical Viewport Grid (638 x 286 px) -->
+    <g transform="translate(14, 52)">
+      <!-- Radar Screen Background & Grid -->
+      <rect width="638" height="286" rx="3" fill="#0b0e13" stroke="#1f2631" stroke-width="1"/>
+      <rect width="638" height="286" rx="3" fill="url(#radarGrid)" opacity="0.65"/>
+
+      <!-- Concentric Range Circles -->
+      <circle cx="319" cy="143" r="60" fill="none" stroke="#2a3340" stroke-width="1" stroke-dasharray="3 3"/>
+      <circle cx="319" cy="143" r="120" fill="none" stroke="#2a3340" stroke-width="1" stroke-dasharray="4 4"/>
+      <circle cx="319" cy="143" r="180" fill="none" stroke="#222b37" stroke-width="1"/>
+
+      <!-- Crosshairs -->
+      <line x1="319" y1="10" x2="319" y2="276" stroke="#222b37" stroke-width="1"/>
+      <line x1="20" y1="143" x2="618" y2="143" stroke="#222b37" stroke-width="1"/>
+
+      <!-- Base Buildings Footprint on Radar -->
+      <!-- Command Center -->
+      <rect x="307" y="131" width="24" height="24" fill="#3b82f6" fill-opacity="0.6" stroke="#60a5fa" stroke-width="1.5"/>
+      <text class="mono" x="319" y="165" font-size="8" fill="#93c5fd" text-anchor="middle">ШТАБ</text>
+
+      <!-- Power Cables / Infrastructure Lines -->
+      <path d="M 319 131 L 319 80 L 260 80" fill="none" stroke="#f59e0b" stroke-width="1.5" stroke-dasharray="2 2"/>
+      <path d="M 331 143 L 420 143 L 420 190" fill="none" stroke="#f59e0b" stroke-width="1.5" stroke-dasharray="2 2"/>
+
+      <!-- Fusion Reactor -->
+      <rect x="244" y="68" width="20" height="20" fill="#f59e0b" fill-opacity="0.4" stroke="#f59e0b" stroke-width="1.2"/>
+      <text class="mono" x="254" y="100" font-size="8" fill="#fcd34d" text-anchor="middle">РЕАКТОР</text>
+
+      <!-- Defense Perimeter: Wall line -->
+      <path d="M 200 50 L 460 50 L 500 220 L 160 220 Z" fill="none" stroke="#475569" stroke-width="2"/>
+      
+      <!-- Turrets on Perimeter -->
+      <circle cx="200" cy="50" r="5" fill="#ef4444" stroke="#ffffff" stroke-width="1"/>
+      <circle cx="200" cy="50" r="30" fill="none" stroke="#ef4444" stroke-width="0.8" stroke-dasharray="2 2" opacity="0.5"/>
+
+      <circle cx="330" cy="50" r="5" fill="#ef4444" stroke="#ffffff" stroke-width="1"/>
+      <circle cx="330" cy="50" r="30" fill="none" stroke="#ef4444" stroke-width="0.8" stroke-dasharray="2 2" opacity="0.5"/>
+
+      <circle cx="460" cy="50" r="5" fill="#ef4444" stroke="#ffffff" stroke-width="1"/>
+      <circle cx="460" cy="50" r="30" fill="none" stroke="#ef4444" stroke-width="0.8" stroke-dasharray="2 2" opacity="0.5"/>
+
+      <!-- Shield Generator Coverage (translucent sphere) -->
+      <circle cx="319" cy="143" r="80" fill="#38bdf8" fill-opacity="0.08" stroke="#38bdf8" stroke-width="1.2" stroke-dasharray="4 2"/>
+
+      <!-- INCOMING HOSTILE THREAT VECTOR (Wave 04) -->
+      <g transform="translate(520, 20)">
+        <!-- Threat Arrow Vector -->
+        <line x1="80" y1="10" x2="10" y2="40" stroke="#ef4444" stroke-width="2.5"/>
+        <polygon points="10,40 18,30 26,38" fill="#ef4444"/>
+        <!-- Enemy Blips -->
+        <circle cx="80" cy="10" r="3.5" fill="#ef4444"/>
+        <circle cx="70" cy="18" r="3" fill="#ef4444"/>
+        <circle cx="88" cy="22" r="3" fill="#ef4444"/>
+        <circle cx="76" cy="28" r="4" fill="#ef4444"/>
+        <text class="mono" x="0" y="14" font-size="9" font-weight="700" fill="#f87171">ВЕКТОР АТАКИ РОЯ</text>
+      </g>
+
+      <!-- Radar Sweep Line -->
+      <line x1="319" y1="143" x2="480" y2="30" stroke="#10b981" stroke-width="1.5" opacity="0.8"/>
+      <polygon points="319,143 480,30 450,20" fill="#10b981" opacity="0.12"/>
+    </g>
+
+    <!-- Radar Footer Status -->
+    <g transform="translate(14, 348)">
+      <text class="mono" x="0" y="14" font-size="10" fill="#64748b">ОБНАРУЖЕНИЕ: 14 ЦЕЛЕЙ (СЕВЕРО-ВОСТОК)</text>
+      <text class="mono" x="638" y="14" font-size="10" fill="#f59e0b" text-anchor="end">РЕЖИМ БОЕВОЙ ГОТОВНОСТИ: АКТИВЕН</text>
+    </g>
+  </g>
+
+</svg>
+"""
+
+with open("c:/dev/MegaProject/assets/ui_build_toolbar_mockup.svg", "w", encoding="utf-8") as f:
+    f.write(svg_content)
+
+print("SVG created successfully at c:/dev/MegaProject/assets/ui_build_toolbar_mockup.svg")
