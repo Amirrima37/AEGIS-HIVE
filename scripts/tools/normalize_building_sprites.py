@@ -21,6 +21,7 @@ SPRITES_DIR = os.path.join(PROJECT_ROOT, 'assets', 'sprites', 'buildings')
 BACKUP_DIR = os.path.join(PROJECT_ROOT, 'assets', 'sprites', 'buildings_backup')
 
 SPECS = {
+    # Base Buildings
     'command_center.png': 3,
     'fusion_reactor.png': 2,
     'quarry.png': 2,
@@ -38,7 +39,43 @@ SPECS = {
     'shield_generator.png': 2,
     'munitions_factory.png': 2,
     'sensor_tower.png': 1,
-    'repair_depot.png': 2
+    'repair_depot.png': 2,
+    'armor_deck.png': 2,
+
+    # Rotated Variants (90 deg)
+    'command_center_rot.png': 3,
+    'fusion_reactor_rot.png': 2,
+    'quarry_rot.png': 2,
+    'factory_rot.png': 2,
+    'habitation_block_rot.png': 1,
+    'support_pillar_rot.png': 1,
+    'excavation_rig_rot.png': 2,
+    'power_cable_rot.png': 1,
+    'conveyor_rot.png': 1,
+    'shaft_elevator_rot.png': 2,
+    'warehouse_rot.png': 2,
+    'defense_wall_rot.png': 1,
+    'autocannon_turret_rot.png': 1,
+    'heavy_railgun_rot.png': 2,
+    'shield_generator_rot.png': 2,
+    'munitions_factory_rot.png': 2,
+    'sensor_tower_rot.png': 1,
+    'repair_depot_rot.png': 2,
+    'armor_deck_rot.png': 2,
+
+    # Corner Variants (Angled / L-turn)
+    'power_cable_corner.png': 1,
+    'conveyor_corner.png': 1,
+    'defense_wall_corner.png': 1,
+
+    # Structural Deck Plates (2x2)
+    'armor_deck.png': 2,
+    'armor_deck_rot.png': 2,
+}
+
+FIXED_HEIGHTS = {
+    'armor_deck.png': 256,
+    'armor_deck_rot.png': 256,
 }
 
 def find_bottom_vertex(im):
@@ -62,7 +99,7 @@ def find_bottom_vertex(im):
         bot_x = sum(row_x) / float(len(row_x))
     return bot_x, bot_y
 
-def normalize_sprite(src_path, dst_path, size_tiles):
+def normalize_sprite(src_path, dst_path, size_tiles, fixed_height=None):
     target_w = size_tiles * 128
     target_diamond_h = size_tiles * 64
     
@@ -103,6 +140,8 @@ def normalize_sprite(src_path, dst_path, size_tiles):
     canvas_h = int(s_bot_y - content_top + margin_bottom + 4)
     if canvas_h % 2 != 0:
         canvas_h += 1
+    if fixed_height is not None and fixed_height > canvas_h:
+        canvas_h = fixed_height
         
     out_im = Image.new('RGBA', (target_w, canvas_h), (0, 0, 0, 0))
     target_bot_x = target_w / 2.0
@@ -130,8 +169,11 @@ def main():
     for filename, size_tiles in SPECS.items():
         src = os.path.join(BACKUP_DIR, filename)
         dst = os.path.join(SPRITES_DIR, filename)
+        if not os.path.exists(src) and os.path.exists(dst):
+            import shutil
+            shutil.copy2(dst, src)
         if os.path.exists(src):
-            normalize_sprite(src, dst, size_tiles)
+            normalize_sprite(src, dst, size_tiles, fixed_height=FIXED_HEIGHTS.get(filename))
         else:
             print(f"Warning: {filename} not found in backup")
     print("=== Нормализация успешно завершена ===")
