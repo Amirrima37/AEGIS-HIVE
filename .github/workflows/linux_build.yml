@@ -12,6 +12,8 @@ jobs:
   build-and-test-linux:
     name: Build, Test & Export Linux x86_64
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
 
     env:
       GODOT_VERSION: "4.7.2"
@@ -118,4 +120,5 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
+          generate_release_notes: true
           files: aegis-hive-linux-x86_64.tar.gz
