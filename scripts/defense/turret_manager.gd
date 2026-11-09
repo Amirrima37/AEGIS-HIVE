@@ -36,13 +36,16 @@ func _get_ammo_supply() -> AmmoSupply:
 	return null
 
 func _process(delta: float) -> void:
+	if GameState and (GameState.is_paused or GameState.game_speed <= 0.0):
+		return
+	var scaled = delta * (GameState.game_speed if GameState else 1.0)
 	# Tick down weapon cooldowns
 	var to_erase: Array = []
 	for turret in _cooldowns.keys():
 		if not is_instance_valid(turret):
 			to_erase.append(turret)
 			continue
-		_cooldowns[turret] -= delta
+		_cooldowns[turret] -= scaled
 		if _cooldowns[turret] <= 0.0:
 			to_erase.append(turret)
 			
@@ -64,7 +67,7 @@ func get_all_turrets() -> Array[Building]:
 func can_fire(turret: Building) -> bool:
 	if not is_instance_valid(turret) or turret.data == null or turret.current_hp <= 0:
 		return false
-	if not turret.connected_to_power:
+	if not turret.is_operational or not turret.connected_to_power:
 		return false
 	if _cooldowns.has(turret) and _cooldowns[turret] > 0.0:
 		return false
@@ -83,7 +86,7 @@ func get_effective_range(turret: Building) -> float:
 	var bm = _get_building_manager()
 	if bm:
 		for b in bm.get_buildings_on_layer(turret.z_level):
-			if is_instance_valid(b) and b.connected_to_power and b.current_hp > 0 and b.data and b.data.defense_role == "sensor":
+			if is_instance_valid(b) and b.is_operational and b.connected_to_power and b.current_hp > 0 and b.data and b.data.defense_role == "sensor":
 				var dist = Vector2(turret.grid_position).distance_to(Vector2(b.grid_position))
 				if dist <= b.data.sensor_radius:
 					return base_range * 1.2
@@ -172,8 +175,9 @@ func fire(turret: Building, target: Variant) -> bool:
 		if target.has("current_hp"):
 			target["current_hp"] = max(0, target["current_hp"] - dmg)
 			
-	# Set cooldown
-	var rate = turret.data.attack_rate
+	# Set cooldown (scaled inversely by damaged turret efficiency)
+	var eff = turret.get_efficiency() if turret.has_method("get_efficiency") else 1.0
+	var rate = turret.data.attack_rate * max(0.4, eff)
 	var cooldown = 1.0 / rate if rate > 0.0 else 1.0
 	_cooldowns[turret] = cooldown
 	

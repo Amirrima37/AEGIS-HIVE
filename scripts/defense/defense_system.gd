@@ -84,11 +84,61 @@ func _on_base_under_attack(pos: Vector2, z: int) -> void:
 	pass
 
 func _on_tick(_tick_count: int) -> void:
-	tick(1.0)
+	# RepairDepot._process handles frame-rate-scaled repair ticks; avoid double-healing on discrete ticks
+	if ammo_supply:
+		ammo_supply.process_factories()
 
-## Периодический цикл логистики обороны (производство патронов, щиты, ремонт)
+## Периодический цикл логистики обороны (для детерминированных тестов и пакетных тиков)
 func tick(delta: float) -> void:
 	if ammo_supply:
 		ammo_supply.process_factories()
 	if repair_depot:
 		repair_depot.run(delta)
+
+## Возвращает живую Бронепалубу с любого яруса выше target_z, перекрывающую клетку grid_pos
+func get_armor_deck_at(target_z: int, grid_pos: Vector2i) -> Building:
+	_find_managers()
+	if building_manager == null:
+		return null
+	var best_deck: Building = null
+	var highest_z := -999999
+	for b in building_manager.get_all_buildings():
+		if not is_instance_valid(b) or b.data == null or b.current_hp <= 0:
+			continue
+		if b.z_level <= target_z:
+			continue
+		if b.data.defense_role != "armor_deck" and b.data.id != &"armor_deck":
+			continue
+		var origin = b.grid_position
+		var sz = b.data.tile_size
+		if grid_pos.x >= origin.x and grid_pos.x < origin.x + sz.x and grid_pos.y >= origin.y and grid_pos.y < origin.y + sz.y:
+			if b.z_level > highest_z:
+				highest_z = b.z_level
+				best_deck = b
+	return best_deck
+
+func is_position_armor_covered(target_z: int, grid_pos: Vector2i) -> bool:
+	return get_armor_deck_at(target_z, grid_pos) != null
+
+## Перехватывает урон от атак сверху (кислотный дождь / воздушный обстрел) бронепалубой
+func absorb_overhead_damage(target_z: int, grid_pos: Vector2i, damage: int) -> int:
+	if damage <= 0:
+		return 0
+	var deck = get_armor_deck_at(target_z, grid_pos)
+	if deck == null or not is_instance_valid(deck) or deck.current_hp <= 0:
+		return damage
+	var absorbed = min(deck.current_hp, damage)
+	deck.take_damage(absorbed)
+	return max(0, damage - absorbed)
+
+func get_layer_armor_decks_protecting(target_z: int) -> Array[Building]:
+	var result: Array[Building] = []
+	_find_managers()
+	if building_manager == null:
+		return result
+	for b in building_manager.get_all_buildings():
+		if not is_instance_valid(b) or b.data == null or b.current_hp <= 0:
+			continue
+		if b.z_level > target_z and (b.data.defense_role == "armor_deck" or b.data.id == &"armor_deck"):
+			result.append(b)
+	return result

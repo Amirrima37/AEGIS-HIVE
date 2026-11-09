@@ -8,6 +8,7 @@ signal layer_created(z: int)
 signal layer_removed(z: int)
 signal request_create_layer_above
 signal request_create_layer_below
+signal layer_creation_failed(target_z: int, reason: String)
 
 # Camera signals
 signal camera_zoom_changed(zoom: float)
@@ -48,3 +49,15 @@ signal building_repaired(building: Node2D, amount: int)
 signal enemy_wave_start(wave_index: int)
 signal enemy_wave_ended(wave_index: int)
 signal base_under_attack(pos: Vector2, z: int)
+
+# Structural Integrity & Cascades (Stage 3 completion)
+signal layer_integrity_compromised(z: int, reason: String)
+signal layer_cascade_damage(z: int, total_damage: int, affected_count: int)
+
+# Colonial Directives, Combat Shift, Aegis & Research
+signal combat_power_shift_toggled(active: bool)
+signal aegis_protocol_toggled(active: bool)
+signal power_priorities_changed(priorities: Dictionary)
+signal research_started(tech_id: StringName)
+signal research_progress_updated(tech_id: StringName, current_ticks: int, total_ticks: int)
+signal research_completed(tech_id: StringName)

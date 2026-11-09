@@ -67,10 +67,12 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 		
 	# Exit mode on ESC or Right Mouse Button
-	if event is InputEventKey and event.pressed and event.keycode == KEY_ESCAPE:
-		_cancel_current_mode()
-		get_viewport().set_input_as_handled()
-		return
+	if event is InputEventKey and event.pressed:
+		var code = event.physical_keycode if event.physical_keycode != 0 else event.keycode
+		if code == KEY_ESCAPE:
+			_cancel_current_mode()
+			get_viewport().set_input_as_handled()
+			return
 		
 	if event is InputEventMouseButton:
 		if event.button_index == MOUSE_BUTTON_RIGHT and event.pressed:
@@ -149,6 +151,8 @@ func _update_ghost_cursor() -> void:
 	if current_building_data.allowed_layers == "surface_only" and z != 0:
 		layer_allowed = false
 	elif current_building_data.allowed_layers == "underground_only" and z >= 0:
+		layer_allowed = false
+	elif current_building_data.allowed_layers == "above_only" and z <= 0:
 		layer_allowed = false
 		
 	var unique_ok = true

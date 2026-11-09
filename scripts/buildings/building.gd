@@ -23,10 +23,13 @@ var is_operational: bool = true:
 
 var sprite_node: Sprite2D = null
 var status_rim_node: Node2D = null
+var damage_overlay_node: Node2D = null
 
 func _ready() -> void:
 	if sprite_node == null:
 		_setup_sprite()
+	if damage_overlay_node == null:
+		_setup_damage_overlay()
 	if status_rim_node == null:
 		_setup_status_rim()
 	_update_position_from_parent()
@@ -42,6 +45,7 @@ func init(p_data: BuildingData, pos: Vector2i, z: int, tml: TileMapLayer = null)
 		elif data.network_type == "supply_source":
 			connected_to_supply = true
 	_setup_sprite()
+	_setup_damage_overlay()
 	_setup_status_rim()
 	if tml:
 		update_world_position(tml)
@@ -61,6 +65,42 @@ func _setup_sprite() -> void:
 	if data and data.sprite:
 		sprite_node.texture = data.sprite
 		sprite_node.centered = true
+
+func _setup_damage_overlay() -> void:
+	if damage_overlay_node == null:
+		damage_overlay_node = Node2D.new()
+		damage_overlay_node.name = "DamageOverlay"
+		damage_overlay_node.z_index = 3
+		damage_overlay_node.visible = false
+		damage_overlay_node.draw.connect(_on_draw_damage_overlay)
+		add_child(damage_overlay_node)
+
+func _on_draw_damage_overlay() -> void:
+	if not is_instance_valid(damage_overlay_node) or not data:
+		return
+	var max_hp = max(1, data.max_hp)
+	var ratio = float(current_hp) / float(max_hp)
+	var size = data.tile_size
+	var sx = float(size.x)
+	var sy = float(size.y)
+	var top = Vector2((sy - sx) * 32.0, -(sx + sy) * 16.0)
+	var right = Vector2((sx + sy) * 32.0, (sx - sy) * 16.0)
+	var bottom = Vector2((sx - sy) * 32.0, (sx + sy) * 16.0)
+	var left = Vector2(-(sx + sy) * 32.0, -(sx - sy) * 16.0)
+
+	if current_hp <= 0:
+		# Ruined state (0 HP): dark debris bed + crossed twisted beams
+		var rubble = PackedVector2Array([top * 0.85, right * 0.85, bottom * 0.85, left * 0.85])
+		damage_overlay_node.draw_colored_polygon(rubble, Color(0.12, 0.11, 0.10, 0.72))
+		damage_overlay_node.draw_line(left * 0.72, right * 0.72, Color(0.85, 0.30, 0.20, 0.90), 3.0, true)
+		damage_overlay_node.draw_line(top * 0.72, bottom * 0.72, Color(0.85, 0.30, 0.20, 0.90), 3.0, true)
+		damage_overlay_node.draw_line(left * 0.45 + Vector2(0, -14), right * 0.40 + Vector2(0, -4), Color(0.35, 0.38, 0.42, 0.95), 4.0, true)
+	elif ratio < 0.5:
+		# Heavily damaged (< 50% HP): soot cracks and hazard sparks
+		damage_overlay_node.draw_line(Vector2(-14, -18), Vector2(4, -6), Color(0.10, 0.08, 0.08, 0.85), 2.5, true)
+		damage_overlay_node.draw_line(Vector2(4, -6), Vector2(-6, 6), Color(0.10, 0.08, 0.08, 0.85), 2.0, true)
+		damage_overlay_node.draw_line(Vector2(4, -6), Vector2(18, 2), Color(0.96, 0.62, 0.07, 0.85), 2.0, true)
+		damage_overlay_node.draw_circle(Vector2(0, -14), 3.5, Color(0.96, 0.48, 0.08, 0.85))
 
 func _setup_status_rim() -> void:
 	if status_rim_node == null:
@@ -122,6 +162,15 @@ func _update_position_from_parent() -> void:
 	elif p and p.get_parent() is TileMapLayer:
 		update_world_position(p.get_parent())
 
+func get_efficiency() -> float:
+	if current_hp <= 0:
+		return 0.0
+	var max_hp = max(1, data.max_hp if data else 100)
+	var ratio = float(current_hp) / float(max_hp)
+	if ratio >= 0.5:
+		return 1.0
+	return clamp(0.4 + 0.6 * (ratio / 0.5), 0.4, 1.0)
+
 func update_operational_state() -> void:
 	var op = (current_hp > 0)
 	if data:
@@ -138,12 +187,42 @@ func update_operational_state() -> void:
 			if data.network_type == "supply_consumer":
 				if not connected_to_supply:
 					op = false
+			if GameState and GameState.has_method("is_blocked_by_combat_mode") and GameState.is_blocked_by_combat_mode(data):
+				op = false
 	is_operational = op
+	_update_damage_visuals()
+
+func _update_damage_visuals() -> void:
+	var max_hp = max(1, data.max_hp if data else 100)
+	var ratio = float(current_hp) / float(max_hp)
+	if is_instance_valid(sprite_node) and data:
+		if current_hp <= 0:
+			if data.ruined_sprite:
+				sprite_node.texture = data.ruined_sprite
+				sprite_node.modulate = Color(1.0, 1.0, 1.0, 1.0)
+			else:
+				if data.sprite:
+					sprite_node.texture = data.sprite
+				sprite_node.modulate = Color(0.32, 0.30, 0.28, 0.85)
+		elif ratio < 0.5:
+			if data.damaged_sprite:
+				sprite_node.texture = data.damaged_sprite
+				sprite_node.modulate = Color(1.0, 1.0, 1.0, 1.0)
+			else:
+				if data.sprite:
+					sprite_node.texture = data.sprite
+				sprite_node.modulate = Color(0.65, 0.60, 0.58, 1.0)
+		else:
+			if data.sprite:
+				sprite_node.texture = data.sprite
+			sprite_node.modulate = Color(1.0, 1.0, 1.0, 1.0)
+	if is_instance_valid(damage_overlay_node):
+		damage_overlay_node.visible = (current_hp <= 0 or ratio < 0.5)
+		if damage_overlay_node.visible:
+			damage_overlay_node.queue_redraw()
 
 func _update_operational_visuals() -> void:
-	if is_instance_valid(sprite_node):
-		# Building model always remains fully opaque and unchanged
-		sprite_node.modulate = Color(1.0, 1.0, 1.0, 1.0)
+	_update_damage_visuals()
 	
 	if status_rim_node and is_instance_valid(status_rim_node):
 		var is_conn = (data != null and data.is_connector)
@@ -161,7 +240,8 @@ func take_damage(amount: int) -> void:
 func get_refund() -> Dictionary:
 	if not data:
 		return {"ore": 0, "materials": 0}
+	var rate = 0.25 if current_hp <= 0 else 0.5
 	return {
-		"ore": int(data.cost_ore * 0.5),
-		"materials": int(data.cost_materials * 0.5)
+		"ore": int(data.cost_ore * rate),
+		"materials": int(data.cost_materials * rate)
 	}

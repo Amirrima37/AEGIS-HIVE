@@ -6,6 +6,8 @@ extends Resource
 @export var description: String = ""
 @export var icon: Texture2D
 @export var sprite: Texture2D
+@export var damaged_sprite: Texture2D
+@export var ruined_sprite: Texture2D
 
 @export_group("Размеры")
 @export var tile_size: Vector2i = Vector2i(1, 1)
@@ -29,7 +31,7 @@ extends Resource
 @export var max_hp: int = 100
 
 @export_group("Правила размещения")
-@export var allowed_layers: String = "any" # "any", "surface_only", "underground_only"
+@export var allowed_layers: String = "any" # "any", "surface_only", "underground_only", "above_only"
 @export var is_structural: bool = false
 @export var unlocks_layer_above: bool = false
 @export var unlocks_layer_below: bool = false

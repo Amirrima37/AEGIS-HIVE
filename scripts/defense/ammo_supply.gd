@@ -6,6 +6,8 @@ signal ammo_changed(new_amount: int)
 var ammo_stock: int = 0:
 	set(val):
 		ammo_stock = max(0, val)
+		if ResourceManager:
+			ResourceManager.resources["ammo"] = ammo_stock
 		ammo_changed.emit(ammo_stock)
 		if EventBus and EventBus.has_signal("resource_changed"):
 			EventBus.resource_changed.emit("ammo", ammo_stock)
@@ -27,12 +29,16 @@ func produce(amount: int) -> void:
 	ammo_stock += amount
 
 func consume(amount: int) -> bool:
+	if GameState and GameState.has_method("is_unlimited_mode") and GameState.is_unlimited_mode():
+		return true
 	if ammo_stock >= amount:
 		ammo_stock -= amount
 		return true
 	return false
 
 func has_ammo(amount: int = 1) -> bool:
+	if GameState and GameState.has_method("is_unlimited_mode") and GameState.is_unlimited_mode():
+		return true
 	return ammo_stock >= amount
 
 func reset() -> void:
@@ -48,14 +54,16 @@ func process_factories() -> int:
 	for b in all_buildings:
 		if not is_instance_valid(b) or b.data == null or b.current_hp <= 0:
 			continue
-		if not b.connected_to_power:
+		if not b.is_operational or not b.connected_to_power or not b.connected_to_supply:
 			continue
 		if b.data.id == &"munitions_factory" or b.data.defense_role == "munitions":
 			var ore_cost = b.data.ore_consumption
 			var mat_cost = b.data.materials_consumption
 			if ResourceManager.can_afford({"ore": ore_cost, "materials": mat_cost}):
 				ResourceManager.spend({"ore": ore_cost, "materials": mat_cost})
-				var prod = b.data.ammo_production if b.data.ammo_production > 0 else 30
+				var base_prod = b.data.ammo_production if b.data.ammo_production > 0 else 30
+				var eff = b.get_efficiency() if b.has_method("get_efficiency") else 1.0
+				var prod = max(1, int(floor(float(base_prod) * eff)))
 				produce(prod)
 				produced_total += prod
 	return produced_total

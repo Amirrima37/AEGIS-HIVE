@@ -1,0 +1,24 @@
+[gd_resource type="Resource" script_class="BuildingData" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/buildings/building_data.gd" id="1_bd"]
+[ext_resource type="Texture2D" path="res://assets/sprites/buildings/armor_deck.png" id="2_tex"]
+
+[resource]
+script = ExtResource("1_bd")
+id = &"armor_deck"
+display_name = "Бронепалуба"
+description = "Массивное бронированное перекрытие для верхних ярусов (z >= +1). Перехватывает и гасит воздушные/орбитальные атаки для всех сооружений на ярусах ниже."
+sprite = ExtResource("2_tex")
+tile_size = Vector2i(2, 2)
+cost_ore = 35
+cost_materials = 45
+energy_production = 0
+energy_consumption = 0
+power_priority = 0
+max_hp = 8000
+allowed_layers = "above_only"
+network_type = "none"
+is_connector = false
+is_defense = true
+defense_role = "armor_deck"
+is_solid = false

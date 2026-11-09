@@ -21,7 +21,10 @@ func _get_building_manager() -> BuildingManager:
 	return null
 
 func _process(delta: float) -> void:
-	_scan_timer += delta
+	if GameState and (GameState.is_paused or GameState.game_speed <= 0.0):
+		return
+	var speed = GameState.game_speed if GameState else 1.0
+	_scan_timer += delta * speed
 	if _scan_timer >= SCAN_INTERVAL:
 		run(_scan_timer)
 		_scan_timer = 0.0
@@ -38,14 +41,17 @@ func run(delta: float = SCAN_INTERVAL) -> int:
 	for depot in depots:
 		if not is_instance_valid(depot) or depot.data == null or depot.current_hp <= 0:
 			continue
-		if not depot.connected_to_power:
+		if not depot.is_operational or not depot.connected_to_power:
 			continue
 			
 		var range_tiles = depot.data.repair_range if depot.data.repair_range > 0.0 else 8.0
 		var rate = depot.data.repair_rate if depot.data.repair_rate > 0.0 else default_repair_rate
-		var max_heal_tick = int(ceil(rate * delta))
+		var eff = depot.get_efficiency() if depot.has_method("get_efficiency") else 1.0
+		var max_heal_tick = int(ceil(rate * eff * delta))
+		if max_heal_tick <= 0:
+			continue
 		
-		# Найти наиболее поврежденное здание на этом же ярусе в радиусе действия
+		# Найти наиболее поврежденное здание (не руины!) на этом же ярусе в радиусе действия
 		var target = _find_most_damaged_in_range(depot, range_tiles)
 		if target != null:
 			var missing_hp = target.data.max_hp - target.current_hp
@@ -89,8 +95,8 @@ func _find_most_damaged_in_range(depot: Building, range_tiles: float) -> Buildin
 	for b in bm.get_buildings_on_layer(depot.z_level):
 		if not is_instance_valid(b) or b.data == null:
 			continue
-		if b.current_hp >= b.data.max_hp:
-			continue # Не повреждено
+		if b.current_hp <= 0 or b.current_hp >= b.data.max_hp:
+			continue # Разрушенные руины или целые здания не ремонтируются
 			
 		var b_pos = Vector2(b.grid_position)
 		if depot_pos.distance_to(b_pos) <= range_tiles:

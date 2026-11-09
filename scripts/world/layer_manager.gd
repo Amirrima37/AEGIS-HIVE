@@ -9,6 +9,8 @@ const LayerData = preload("res://scripts/world/layer_data.gd")
 var layers: Dictionary = {} # int -> LayerData
 var active_layer_z: int = 0
 var shared_tileset: TileSet
+var _compromised_layers: Array[int] = []
+var _is_applying_cascade: bool = false
 
 # Source IDs in TileSet
 const SOURCE_SURFACE: int = 0
@@ -26,6 +28,8 @@ func _ready() -> void:
 		EventBus.request_create_layer_above.connect(_on_request_create_layer_above)
 	if EventBus.has_signal("request_create_layer_below"):
 		EventBus.request_create_layer_below.connect(_on_request_create_layer_below)
+	if EventBus.has_signal("building_placed"):
+		EventBus.building_placed.connect(_on_building_placed_structural)
 	if EventBus.has_signal("building_removed"):
 		EventBus.building_removed.connect(_on_building_changed_structural)
 	if EventBus.has_signal("building_damaged"):
@@ -168,7 +172,10 @@ func _on_request_create_layer_above() -> void:
 		var bm = _get_building_manager()
 		if bm and bm.has_method("has_structural_support"):
 			if not bm.has_structural_support(z_target):
+				var msg = "Нужна опорная колонна на ярусе %d" % (z_target - 1)
 				push_warning("Cannot create layer +%d: Requires a support pillar on layer %d" % [z_target, z_target - 1])
+				if EventBus and EventBus.has_signal("layer_creation_failed"):
+					EventBus.layer_creation_failed.emit(z_target, msg)
 				return
 	create_layer(z_target)
 
@@ -180,7 +187,18 @@ func _on_request_create_layer_below() -> void:
 		var bm = _get_building_manager()
 		if bm and bm.has_method("has_excavation_rig"):
 			if not bm.has_excavation_rig(z_target):
-				push_warning("Cannot create layer %d: Requires an excavation rig on layer %d" % [z_target, z_target + 1])
+				# Check if rig exists on drill layer but lacks power
+				var drill_layer = z_target + 1
+				var has_unpowered_rig := false
+				if bm.has_method("get_buildings_on_layer"):
+					for b in bm.get_buildings_on_layer(drill_layer):
+						if b.data and b.data.unlocks_layer_below:
+							has_unpowered_rig = true
+							break
+				var msg = "Запитайте буровую на ярусе %d!" % drill_layer if has_unpowered_rig else "Нужна буровая установка на ярусе %d" % drill_layer
+				push_warning("Cannot create layer %d: %s" % [z_target, msg])
+				if EventBus and EventBus.has_signal("layer_creation_failed"):
+					EventBus.layer_creation_failed.emit(z_target, msg)
 				return
 	create_layer(z_target)
 
@@ -211,40 +229,109 @@ func is_layer_structurally_sound(z: int) -> bool:
 	if bm == null:
 		return true
 	if z > 0:
+		# Inductive check: every level from 1 up to z must have structural support below it
+		for cur in range(1, z + 1):
+			if layers.has(cur) and not bm.has_structural_support(cur):
+				return false
 		return bm.has_structural_support(z)
 	elif z < 0:
 		return bm.has_excavation_rig(z)
 	return true
 
+func get_compromised_layers() -> Array[int]:
+	return _compromised_layers.duplicate()
+
 func validate_structural_integrity() -> Array[int]:
 	var compromised: Array[int] = []
 	var is_unl = GameState and GameState.has_method("is_unlimited_mode") and GameState.is_unlimited_mode()
 	if is_unl:
+		_compromised_layers.clear()
 		return compromised
 		
 	var bm = _get_building_manager()
 	if bm == null:
 		return compromised
-		
-	for z in get_existing_z_levels():
-		if z > 0 and not bm.has_structural_support(z):
-			compromised.append(z)
-			if EventBus and EventBus.has_signal("layer_integrity_compromised"):
-				EventBus.layer_integrity_compromised.emit(z, "missing_support_pillar")
+	
+	var z_levels = get_existing_z_levels()
+	var is_upper_supported: Dictionary = {0: true}
+	for z in z_levels:
+		if z > 0:
+			var parent_ok = bool(is_upper_supported.get(z - 1, false))
+			var pillar_ok = bm.has_structural_support(z)
+			var supported = parent_ok and pillar_ok
+			is_upper_supported[z] = supported
+			if not supported:
+				compromised.append(z)
+				if EventBus and EventBus.has_signal("layer_integrity_compromised"):
+					EventBus.layer_integrity_compromised.emit(z, "missing_support_pillar")
 		elif z < 0 and not bm.has_excavation_rig(z):
 			compromised.append(z)
 			if EventBus and EventBus.has_signal("layer_integrity_compromised"):
 				EventBus.layer_integrity_compromised.emit(z, "missing_excavation_rig")
-				
+	
+	_compromised_layers = compromised.duplicate()
 	return compromised
 
-func _on_building_changed_structural(b: Node2D) -> void:
+func _apply_structural_cascade_damage(target_layers: Array[int], hp_ratio: float = 0.35) -> void:
+	if _is_applying_cascade or target_layers.is_empty():
+		return
+	var is_unl = GameState and GameState.has_method("is_unlimited_mode") and GameState.is_unlimited_mode()
+	if is_unl:
+		return
+	var bm = _get_building_manager()
+	if bm == null or not bm.has_method("get_buildings_on_layer"):
+		return
+	_is_applying_cascade = true
+	for z in target_layers:
+		if z <= 0:
+			continue
+		var total_dmg := 0
+		var affected := 0
+		for b in bm.get_buildings_on_layer(z):
+			if not is_instance_valid(b) or b.data == null or b.current_hp <= 0:
+				continue
+			var dmg = max(1, int(ceil(float(b.data.max_hp) * hp_ratio)))
+			b.take_damage(dmg)
+			total_dmg += dmg
+			affected += 1
+		if affected > 0 and EventBus and EventBus.has_signal("layer_cascade_damage"):
+			EventBus.layer_cascade_damage.emit(z, total_dmg, affected)
+	_is_applying_cascade = false
+
+func apply_tick_structural_decay() -> void:
+	var compromised = validate_structural_integrity()
+	var upper_compromised: Array[int] = []
+	for z in compromised:
+		if z > 0:
+			upper_compromised.append(z)
+	if not upper_compromised.is_empty():
+		_apply_structural_cascade_damage(upper_compromised, 0.10)
+
+func _on_building_placed_structural(b: Node2D) -> void:
 	if b and "data" in b and b.data and b.data.is_structural:
 		validate_structural_integrity()
 
+func _on_building_changed_structural(b: Node2D) -> void:
+	if b and "data" in b and b.data and b.data.is_structural:
+		var compromised = validate_structural_integrity()
+		if not _is_applying_cascade:
+			var upper: Array[int] = []
+			for z in compromised:
+				if z > 0:
+					upper.append(z)
+			if not upper.is_empty():
+				_apply_structural_cascade_damage(upper, 0.35)
+
 func _on_building_damaged_structural(b: Node2D, _amount: int, current_hp: int) -> void:
 	if current_hp <= 0 and b and "data" in b and b.data and b.data.is_structural:
-		validate_structural_integrity()
+		var compromised = validate_structural_integrity()
+		if not _is_applying_cascade:
+			var upper: Array[int] = []
+			for z in compromised:
+				if z > 0:
+					upper.append(z)
+			if not upper.is_empty():
+				_apply_structural_cascade_damage(upper, 0.35)
 
 func _on_layer_removed_structural(_z: int) -> void:
 	validate_structural_integrity()

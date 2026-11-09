@@ -4,6 +4,7 @@ var resources: Dictionary = {
 	"energy": 100,
 	"ore": 50,
 	"materials": 30,
+	"ammo": 0,
 	"population": 10,
 	"population_capacity": 50
 }

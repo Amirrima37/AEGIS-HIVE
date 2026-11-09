@@ -23,14 +23,23 @@ func _process(delta: float) -> void:
 
 func _handle_keyboard_pan(delta: float) -> void:
 	var dir = Vector2.ZERO
-	if Input.is_key_pressed(KEY_W) or Input.is_key_pressed(KEY_UP):
+	# Support both physical keycodes (independent of active keyboard layout) and logical keys
+	if Input.is_physical_key_pressed(KEY_W) or Input.is_key_pressed(KEY_W) or Input.is_physical_key_pressed(KEY_UP) or Input.is_key_pressed(KEY_UP):
 		dir.y -= 1.0
-	if Input.is_key_pressed(KEY_S) or Input.is_key_pressed(KEY_DOWN):
+	if Input.is_physical_key_pressed(KEY_S) or Input.is_key_pressed(KEY_S) or Input.is_physical_key_pressed(KEY_DOWN) or Input.is_key_pressed(KEY_DOWN):
 		dir.y += 1.0
-	if Input.is_key_pressed(KEY_A) or Input.is_key_pressed(KEY_LEFT):
+	if Input.is_physical_key_pressed(KEY_A) or Input.is_key_pressed(KEY_A) or Input.is_physical_key_pressed(KEY_LEFT) or Input.is_key_pressed(KEY_LEFT):
 		dir.x -= 1.0
-	if Input.is_key_pressed(KEY_D) or Input.is_key_pressed(KEY_RIGHT):
+	if Input.is_physical_key_pressed(KEY_D) or Input.is_key_pressed(KEY_D) or Input.is_physical_key_pressed(KEY_RIGHT) or Input.is_key_pressed(KEY_RIGHT):
 		dir.x += 1.0
+	
+	# Gamepad / Steam Deck left analog stick pan
+	var joy_x = Input.get_joy_axis(0, JOY_AXIS_LEFT_X)
+	var joy_y = Input.get_joy_axis(0, JOY_AXIS_LEFT_Y)
+	if abs(joy_x) > 0.15:
+		dir.x += joy_x
+	if abs(joy_y) > 0.15:
+		dir.y += joy_y
 	
 	if dir != Vector2.ZERO:
 		# Normalize and scale so screen movement speed feels natural regardless of zoom
@@ -66,16 +75,24 @@ func _unhandled_input(event: InputEvent) -> void:
 	# Keyboard hotkeys for layer switching and creation
 	elif event is InputEventKey and event.pressed and not event.echo:
 		var is_shift = event.shift_pressed
-		if event.keycode == KEY_Q:
+		var code = event.physical_keycode if event.physical_keycode != 0 else event.keycode
+		if code == KEY_Q:
 			if is_shift:
 				_request_create_layer(1)
 			else:
 				EventBus.layer_change_requested.emit(1)
-		elif event.keycode == KEY_E:
+		elif code == KEY_E:
 			if is_shift:
 				_request_create_layer(-1)
 			else:
 				EventBus.layer_change_requested.emit(-1)
+	
+	# Gamepad / Steam Deck shoulder buttons for layer navigation
+	elif event is InputEventJoypadButton and event.pressed:
+		if event.button_index == JOY_BUTTON_LEFT_SHOULDER:
+			EventBus.layer_change_requested.emit(1)
+		elif event.button_index == JOY_BUTTON_RIGHT_SHOULDER:
+			EventBus.layer_change_requested.emit(-1)
 
 func _zoom_at_mouse(factor: float, mouse_screen_pos: Vector2) -> void:
 	var old_zoom_val = _target_zoom.x
@@ -92,7 +109,16 @@ func _zoom_at_mouse(factor: float, mouse_screen_pos: Vector2) -> void:
 
 func _request_create_layer(direction: int) -> void:
 	# Direction: +1 for upper floor, -1 for underground
+	var lm = get_tree().root.find_child("LayerManager", true, false) if is_inside_tree() else null
+	var prev_count: int = lm.get_existing_z_levels().size() if (lm and lm.has_method("get_existing_z_levels")) else 0
 	if direction > 0:
 		EventBus.request_create_layer_above.emit()
 	else:
 		EventBus.request_create_layer_below.emit()
+	# When the player explicitly triggers layer creation via Shift+Q / Shift+E,
+	# switch directly to the newly unlocked layer for clear visual feedback.
+	if lm and lm.has_method("get_existing_z_levels"):
+		var keys: Array = lm.get_existing_z_levels()
+		if keys.size() > prev_count and not keys.is_empty():
+			var target_z = keys.max() if direction > 0 else keys.min()
+			EventBus.layer_jump_requested.emit(target_z)

@@ -52,6 +52,9 @@ func place_building(data: BuildingData, pos: Vector2i, z: int) -> Building:
 	if data.allowed_layers == "underground_only" and z >= 0:
 		push_warning("Building %s is only allowed on underground layers (z<0)" % data.id)
 		return null
+	if data.allowed_layers == "above_only" and z <= 0:
+		push_warning("Building %s is only allowed on upper platform layers (z>0)" % data.id)
+		return null
 		
 	# Unique building check (command center can only exist once in the world)
 	if data.id == &"command_center" and get_building_count(&"command_center") > 0:
