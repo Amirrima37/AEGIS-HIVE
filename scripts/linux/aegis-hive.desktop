@@ -1,0 +1,12 @@
+[Desktop Entry]
+Name=Project: Aegis-Hive
+Comment=Sci-fi isometric city builder with megastructures and tactical defense
+Exec=aegis-hive.sh %u
+Icon=aegis-hive
+Terminal=false
+Type=Application
+Categories=Game;StrategyGame;Simulation;
+Keywords=godot;strategy;citybuilder;isometric;scifi;defense;
+StartupWMClass=aegis-hive
+PrefersNonDefaultGPU=true
+X-KDE-RunOnDiscreteGpu=true

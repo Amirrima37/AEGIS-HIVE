@@ -1,0 +1,121 @@
+name: Linux & Steam Deck Build CI
+
+on:
+  push:
+    branches: [ main ]
+    tags: [ 'v*' ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build-and-test-linux:
+    name: Build, Test & Export Linux x86_64
+    runs-on: ubuntu-latest
+
+    env:
+      GODOT_VERSION: "4.7.2"
+      GODOT_CHANNEL: "stable"
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Verify Virtual Filesystem Casing (Case Sensitivity)
+        run: python scripts/tools/lint_file_casing.py
+
+      - name: Verify export_presets.cfg Exists
+        run: |
+          if [ ! -f "export_presets.cfg" ]; then
+            echo "[ERROR] export_presets.cfg is missing from repository root!"
+            exit 1
+          fi
+
+      - name: Install System Dependencies for Godot
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq \
+            libxcursor-dev \
+            libxinerama-dev \
+            libxrandr-dev \
+            libxi-dev \
+            libgl1-mesa-dev \
+            libvulkan-dev \
+            libasound2-dev \
+            libpulse-dev \
+            libfontconfig1-dev
+
+      - name: Cache Godot Binary & Export Templates
+        id: cache-godot
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.local/bin/godot
+            ~/.local/share/godot/export_templates
+          key: godot-${{ env.GODOT_VERSION }}-${{ env.GODOT_CHANNEL }}-linux-v1
+
+      - name: Download Godot & Official Export Templates
+        if: steps.cache-godot.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p ~/.local/bin
+          mkdir -p ~/.local/share/godot/export_templates/${{ env.GODOT_VERSION }}.${{ env.GODOT_CHANNEL }}
+
+          GODOT_BIN_URL="https://github.com/godotengine/godot-builds/releases/download/${{ env.GODOT_VERSION }}-${{ env.GODOT_CHANNEL }}/Godot_v${{ env.GODOT_VERSION }}-${{ env.GODOT_CHANNEL }}_linux.x86_64.zip"
+          TEMPLATES_URL="https://github.com/godotengine/godot-builds/releases/download/${{ env.GODOT_VERSION }}-${{ env.GODOT_CHANNEL }}/Godot_v${{ env.GODOT_VERSION }}-${{ env.GODOT_CHANNEL }}_export_templates.tpz"
+
+          echo "Downloading Godot Linux binary..."
+          curl -fsSL "$GODOT_BIN_URL" -o /tmp/godot.zip
+          unzip -q /tmp/godot.zip -d ~/.local/bin/
+          mv ~/.local/bin/Godot_v${{ env.GODOT_VERSION }}-${{ env.GODOT_CHANNEL }}_linux.x86_64 ~/.local/bin/godot
+          chmod +x ~/.local/bin/godot
+
+          echo "Downloading Godot Export Templates..."
+          curl -fsSL "$TEMPLATES_URL" -o /tmp/templates.tpz
+          unzip -q /tmp/templates.tpz -d /tmp/godot_templates
+          mv /tmp/godot_templates/templates/* ~/.local/share/godot/export_templates/${{ env.GODOT_VERSION }}.${{ env.GODOT_CHANNEL }}/
+          rm -rf /tmp/godot.zip /tmp/templates.tpz /tmp/godot_templates
+
+      - name: Add Godot to PATH
+        run: |
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+          chmod +x "$HOME/.local/bin/godot"
+
+      - name: Import Project Resources
+        run: godot --path . --headless --import
+
+      - name: Run Full Headless Test Suite
+        run: godot --path . --headless "res://tests/test_runner.tscn"
+
+      - name: Export Linux x86_64 Release Build
+        run: |
+          mkdir -p builds/linux
+          godot --path . --headless --export-release "Linux/X11" "builds/linux/aegis-hive.x86_64"
+          test -s builds/linux/aegis-hive.x86_64
+          test -s builds/linux/aegis-hive.pck
+          chmod +x builds/linux/aegis-hive.x86_64
+          cp scripts/linux/aegis-hive.sh builds/linux/
+          cp scripts/linux/aegis-hive.desktop builds/linux/
+          cp README.md LICENSE builds/linux/
+          chmod +x builds/linux/aegis-hive.sh
+
+      - name: Package Standalone Linux Tarball
+        run: |
+          tar -czvf aegis-hive-linux-x86_64.tar.gz -C builds/linux .
+          ls -lh aegis-hive-linux-x86_64.tar.gz
+
+      - name: Upload Linux Build Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: aegis-hive-linux-x86_64
+          path: aegis-hive-linux-x86_64.tar.gz
+
+      - name: Publish GitHub Release on Tag
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: aegis-hive-linux-x86_64.tar.gz

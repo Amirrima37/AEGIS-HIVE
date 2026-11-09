@@ -9,11 +9,14 @@
 *.cfg text eol=lf
 *.import text eol=lf
 
-# Documentation and configs
+# Documentation, scripts, and configs
 *.md text eol=lf
 *.json text eol=lf
 *.yml text eol=lf
 *.yaml text eol=lf
+*.sh text eol=lf
+*.py text eol=lf
+*.desktop text eol=lf
 
 # Binary files
 *.png binary
