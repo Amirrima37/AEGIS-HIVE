@@ -28,6 +28,21 @@ static func run_all_tests(main_node: Node) -> void:
 	assert(sensor_data != null, "Failed to load sensor_tower.tres")
 	var repair_data = load("res://data/buildings/repair_depot.tres") as BuildingData
 	assert(repair_data != null, "Failed to load repair_depot.tres")
+	var armor_deck_data = load("res://data/buildings/armor_deck.tres") as BuildingData
+	assert(armor_deck_data != null, "Failed to load armor_deck.tres")
+	var hab_data = load("res://data/buildings/habitation_block.tres") as BuildingData
+	assert(hab_data != null, "Failed to load habitation_block.tres")
+	var quarry_data = load("res://data/buildings/quarry.tres") as BuildingData
+	assert(quarry_data != null, "Failed to load quarry.tres")
+	var factory_data = load("res://data/buildings/factory.tres") as BuildingData
+	assert(factory_data != null, "Failed to load factory.tres")
+	var pillar_data = load("res://data/buildings/support_pillar.tres") as BuildingData
+	assert(pillar_data != null, "Failed to load support_pillar.tres")
+	
+	var layer_mgr: LayerManager = main_node.find_child("LayerManager", true, false)
+	var tick_mgr: TickManager = main_node.find_child("TickManager", true, false)
+	var research_mgr: ResearchManager = main_node.find_child("ResearchManager", true, false)
+	assert(layer_mgr != null and tick_mgr != null and research_mgr != null, "Core Stage 3 test managers missing!")
 	
 	# Replenish resources for testing
 	ResourceManager.set_resource("ore", 5000)
@@ -140,12 +155,19 @@ static func run_all_tests(main_node: Node) -> void:
 	var mun_b = building_mgr.place_building(munitions_data, Vector2i(14, 14), 0)
 	assert(mun_b != null, "T3.4: Munitions factory placement failed")
 	mun_b.connected_to_power = true
+	mun_b.connected_to_supply = false
 	
 	ResourceManager.set_resource("ore", 100)
 	ResourceManager.set_resource("materials", 100)
 	ammo_sys.reset()
 	assert(ammo_sys.ammo_stock == 0, "T3.4: Ammo stock must start at 0")
 	
+	# Unsupplied factory must produce 0
+	var produced_unsupplied = ammo_sys.process_factories()
+	assert(produced_unsupplied == 0, "T3.4: Unsupplied munitions factory must produce 0 ammo")
+	
+	# Now supply logistics
+	mun_b.connected_to_supply = true
 	var produced = ammo_sys.process_factories()
 	assert(produced == 30, "T3.4: Munitions factory must produce 30 ammo, got %d" % produced)
 	assert(ammo_sys.ammo_stock == 30, "T3.4: Ammo stock must be 30, got %d" % ammo_sys.ammo_stock)
@@ -156,7 +178,7 @@ static func run_all_tests(main_node: Node) -> void:
 	assert(consumed == true, "T3.4: Consuming 15 ammo must succeed")
 	assert(ammo_sys.ammo_stock == 15, "T3.4: Remaining ammo must be 15, got %d" % ammo_sys.ammo_stock)
 	building_mgr.remove_building(mun_b)
-	print("[OK] T3.4: test_ammo_production_and_consumption пройден (производство патронов на фабриках и расход)")
+	print("[OK] T3.4: test_ammo_production_and_consumption пройден (логистика + производство патронов и расход)")
 	
 	# -------------------------------------------------------------
 	# T3.5: test_repair_depot_heals_buildings
@@ -165,7 +187,6 @@ static func run_all_tests(main_node: Node) -> void:
 	assert(repair_b != null, "T3.5: Repair depot placement failed")
 	
 	# Place damaged building within repair range (dist 2)
-	var hab_data = load("res://data/buildings/habitation_block.tres") as BuildingData
 	var damaged_hab = building_mgr.place_building(hab_data, Vector2i(20, 18), 0)
 	assert(damaged_hab != null, "T3.5: Habitation block placement failed")
 	repair_b.connected_to_power = true
@@ -198,6 +219,7 @@ static func run_all_tests(main_node: Node) -> void:
 	if toolbar:
 		for path in [
 			"res://data/buildings/defense_wall.tres",
+			"res://data/buildings/armor_deck.tres",
 			"res://data/buildings/autocannon_turret.tres",
 			"res://data/buildings/heavy_railgun.tres",
 			"res://data/buildings/shield_generator.tres",
@@ -207,6 +229,240 @@ static func run_all_tests(main_node: Node) -> void:
 		]:
 			var res = load(path) as BuildingData
 			assert(toolbar._building_buttons.has(res), "T3.6: BuildToolbar must have button for %s" % res.id)
-		print("[OK] T3.6: test_defense_toolbar_buttons пройден (все 7 оборонительных зданий интегрированы в панель строительства)")
+		print("[OK] T3.6: test_defense_toolbar_buttons пройден (все 8 оборонительных зданий интегрированы в панель строительства)")
+	
+	# -------------------------------------------------------------
+	# T3.7: test_ammo_sync_with_resource_manager_and_unlimited_mode
+	# -------------------------------------------------------------
+	ammo_sys.reset()
+	assert(ResourceManager.get_resource("ammo") == 0, "T3.7: ResourceManager['ammo'] must sync on reset")
+	ammo_sys.produce(42)
+	assert(ResourceManager.get_resource("ammo") == 42, "T3.7: ResourceManager['ammo'] must reflect produce(42)")
+	ammo_sys.reset()
+	GameState.set_game_mode(GameState.GameMode.UNLIMITED)
+	assert(ammo_sys.has_ammo(999) == true, "T3.7: Unlimited mode must bypass ammo check")
+	assert(ammo_sys.consume(10) == true, "T3.7: Unlimited mode consume must succeed at 0 stock")
+	GameState.set_game_mode(GameState.GameMode.STANDARD)
+	print("[OK] T3.7: test_ammo_sync_with_resource_manager_and_unlimited_mode пройден")
+	
+	# -------------------------------------------------------------
+	# T3.8: test_pause_speed_and_ruins_in_defense_subsystems
+	# -------------------------------------------------------------
+	var t38_turret = building_mgr.place_building(turret_data, Vector2i(8, 8), 0)
+	var t38_repair = building_mgr.place_building(repair_data, Vector2i(10, 8), 0)
+	var t38_ruin_wall = building_mgr.place_building(wall_data, Vector2i(12, 8), 0)
+	assert(t38_turret != null and t38_repair != null and t38_ruin_wall != null, "T3.8: Test buildings placement failed")
+	t38_turret.connected_to_power = true
+	t38_repair.connected_to_power = true
+	# Ruin the wall completely (0 HP -> ruins cannot be auto-healed!)
+	t38_ruin_wall.take_damage(t38_ruin_wall.data.max_hp)
+	assert(t38_ruin_wall.current_hp == 0, "T3.8: Ruined wall HP must be 0")
+	ResourceManager.set_resource("materials", 200)
+	assert(repair_sys.run(1.0) == 0, "T3.8: RepairDepot must ignore 0 HP ruins")
+	
+	# Unoperational turret must NOT fire; unoperational repair depot must NOT heal
+	t38_turret.connected_to_power = false
+	ammo_sys.produce(5)
+	var dummy_enemy = {"grid_position": Vector2i(9, 8), "z_level": 0, "hp": 500, "current_hp": 500}
+	assert(turret_mgr.can_fire(t38_turret) == false, "T3.8: Unpowered turret must not fire")
+	t38_turret.connected_to_power = true
+	assert(turret_mgr.fire(t38_turret, dummy_enemy) == true, "T3.8: Powered turret must fire")
+	
+	# Pause must freeze cooldown countdown
+	var cd_before = turret_mgr._cooldowns.get(t38_turret, 0.0)
+	assert(cd_before > 0.0, "T3.8: Turret must have active cooldown after firing")
+	GameState.is_paused = true
+	turret_mgr._process(0.5)
+	assert(abs(turret_mgr._cooldowns.get(t38_turret, 0.0) - cd_before) < 0.001, "T3.8: Paused TurretManager must freeze cooldown")
+	GameState.is_paused = false
+	GameState.game_speed = 2.0
+	turret_mgr._process(0.1)
+	assert(turret_mgr._cooldowns.get(t38_turret, 0.0) < cd_before - 0.15, "T3.8: Speed 2x must tick cooldown twice as fast")
+	GameState.game_speed = 1.0
+	
+	t38_repair.connected_to_power = false
+	var t38_damaged_hab = building_mgr.place_building(hab_data, Vector2i(10, 10), 0)
+	assert(t38_damaged_hab != null, "T3.8: Damaged hab placement failed")
+	t38_damaged_hab.take_damage(40)
+	assert(repair_sys.run(1.0) == 0, "T3.8: Unoperational RepairDepot must not heal")
+	
+	ammo_sys.reset()
+	turret_mgr._cooldowns.clear()
+	building_mgr.remove_building(t38_damaged_hab)
+	building_mgr.remove_building(t38_ruin_wall)
+	building_mgr.remove_building(t38_repair)
+	building_mgr.remove_building(t38_turret)
+	print("[OK] T3.8: test_pause_speed_and_ruins_in_defense_subsystems пройден")
+	
+	# -------------------------------------------------------------
+	# T3.9: test_inductive_structural_integrity_and_cascade_damage
+	# -------------------------------------------------------------
+	GameState.set_game_mode(GameState.GameMode.STANDARD)
+	for b in building_mgr.get_all_buildings():
+		if b.data and b.data.id != &"command_center":
+			building_mgr.remove_building(b)
+	ResourceManager.set_resource("ore", 5000)
+	ResourceManager.set_resource("materials", 5000)
+	ResourceManager.set_resource("energy", 5000)
+	
+	var t39_pillar0 = building_mgr.place_building(pillar_data, Vector2i(0, 2), 0)
+	assert(t39_pillar0 != null, "T3.9: Pillar on z=0 failed")
+	layer_mgr.create_layer(1)
+	var t39_pillar1 = building_mgr.place_building(pillar_data, Vector2i(0, 2), 1)
+	assert(t39_pillar1 != null, "T3.9: Pillar on z=1 failed")
+	layer_mgr.create_layer(2)
+	var t39_hab_z1 = building_mgr.place_building(hab_data, Vector2i(1, 2), 1)
+	var t39_hab_z2 = building_mgr.place_building(hab_data, Vector2i(1, 2), 2)
+	assert(t39_hab_z1 != null and t39_hab_z2 != null, "T3.9: Upper habs failed")
+	assert(layer_mgr.is_layer_structurally_sound(1) == true and layer_mgr.is_layer_structurally_sound(2) == true, "T3.9: Supported layers +1 & +2 must be sound")
+	
+	var comp_list := []
+	var cascade_layers := []
+	var on_comp = func(z_lvl, _r): comp_list.append(z_lvl)
+	var on_casc = func(z_lvl, _d, _c): cascade_layers.append(z_lvl)
+	EventBus.layer_integrity_compromised.connect(on_comp)
+	EventBus.layer_cascade_damage.connect(on_casc)
+	
+	var hp1_before = t39_hab_z1.current_hp
+	var hp2_before = t39_hab_z2.current_hp
+	# Destroy base pillar on z=0 -> BOTH z=1 and z=2 must be compromised inductively and take cascade damage!
+	t39_pillar0.take_damage(t39_pillar0.data.max_hp)
+	assert(comp_list.has(1) and comp_list.has(2), "T3.9: Both z=1 and z=2 must be compromised inductively when z=0 pillar fails")
+	assert(cascade_layers.has(1) and cascade_layers.has(2), "T3.9: Cascade damage must hit both z=1 and z=2")
+	assert(t39_hab_z1.current_hp < hp1_before and t39_hab_z2.current_hp < hp2_before, "T3.9: Upper buildings must lose ~35% HP on pillar collapse")
+	
+	EventBus.layer_integrity_compromised.disconnect(on_comp)
+	EventBus.layer_cascade_damage.disconnect(on_casc)
+	building_mgr.remove_building(t39_hab_z2)
+	building_mgr.remove_building(t39_hab_z1)
+	building_mgr.remove_building(t39_pillar1)
+	building_mgr.remove_building(t39_pillar0)
+	layer_mgr.remove_layer(2)
+	print("[OK] T3.9: test_inductive_structural_integrity_and_cascade_damage пройден")
+	
+	# -------------------------------------------------------------
+	# T3.10: test_combat_power_shift_and_research_gated_aegis_protocol
+	# -------------------------------------------------------------
+	GameState.reset_directives_and_research()
+	var t310_quarry = building_mgr.place_building(quarry_data, Vector2i(-3, 0), 0)
+	var t310_hab = building_mgr.place_building(hab_data, Vector2i(2, 0), 0)
+	var t310_shield = building_mgr.place_building(shield_data, Vector2i(0, 2), 0)
+	assert(t310_quarry != null and t310_hab != null and t310_shield != null, "T3.10: Placement failed")
+	network_mgr.recalculate_all()
+	assert(t310_quarry.is_operational == true and t310_hab.is_operational == true, "T3.10: Civilian/mining must operate initially")
+	
+	# 1) Immediate Combat Power Shift (NO research required)
+	GameState.set_combat_power_shift(true)
+	assert(t310_quarry.is_operational == false and t310_hab.is_operational == false, "T3.10: Combat power shift must immediately shut down industry & habitation")
+	assert(shield_ctrl.is_active == false, "T3.10: Combat power shift alone does NOT activate Aegis shields")
+	
+	# 2) Aegis Protocol MUST remain blocked before Research completion
+	assert(GameState.set_aegis_protocol(true) == false, "T3.10: Aegis Protocol must fail before research")
+	assert(GameState.aegis_protocol_active == false, "T3.10: Aegis cannot become active while locked")
+	
+	# 3) Research &"aegis_protocol" via ResearchManager + TickManager ticks
+	ResourceManager.set_resource("ore", 500)
+	ResourceManager.set_resource("materials", 500)
+	assert(research_mgr.start_research(&"aegis_protocol") == true, "T3.10: Starting Aegis research must succeed")
+	for _i in range(8):
+		tick_mgr.run_tick()
+	assert(GameState.is_tech_unlocked(&"aegis_protocol") == true, "T3.10: Aegis tech must unlock after 8 ticks")
+	assert(GameState.aegis_protocol_unlocked == true, "T3.10: aegis_protocol_unlocked flag must flip true")
+	
+	# 4) Activate Aegis -> shield dome forces active and remains active even after enemy_wave_ended!
+	assert(GameState.set_aegis_protocol(true) == true, "T3.10: Aegis must activate once unlocked")
+	assert(shield_ctrl.is_active == true, "T3.10: Active Aegis must force ShieldController active")
+	EventBus.enemy_wave_ended.emit(1)
+	assert(shield_ctrl.is_active == true, "T3.10: Shield must remain forced ready after wave ends under Aegis")
+	var shelter_stats = tick_mgr.get_sheltered_population_stats()
+	assert(int(shelter_stats["bunker_capacity"]) >= 70, "T3.10: Covered hab + CC bunker must sum capacity >= 70, got %d" % int(shelter_stats["bunker_capacity"]))
+	
+	GameState.reset_directives_and_research()
+	shield_ctrl.deactivate()
+	building_mgr.remove_building(t310_shield)
+	building_mgr.remove_building(t310_hab)
+	building_mgr.remove_building(t310_quarry)
+	print("[OK] T3.10: test_combat_power_shift_and_research_gated_aegis_protocol пройден")
+	
+	# -------------------------------------------------------------
+	# T3.11: test_dynamic_power_priorities
+	# -------------------------------------------------------------
+	GameState.reset_directives_and_research()
+	# Set user custom ranking: industry (#1) BEFORE life_support (#2) BEFORE defense (#3)!
+	GameState.set_power_category_order(["industry", "life_support", "defense", "logistics"])
+	var t311_quarry = building_mgr.place_building(quarry_data, Vector2i(-3, 0), 0) # industry, -3 MW (touches CC)
+	var t311_hab = building_mgr.place_building(hab_data, Vector2i(2, 0), 0) # life_support, -2 MW (touches CC)
+	var t311_shield = building_mgr.place_building(shield_data, Vector2i(0, 2), 0) # defense, -6 MW (touches CC)
+	assert(t311_quarry != null and t311_hab != null and t311_shield != null, "T3.11: Placement failed")
+	# Total demand = 3 + 2 + 6 = 11 MW, CC produces +10 MW
+	ResourceManager.set_resource("energy", 0)
+	network_mgr.recalculate_all()
+	tick_mgr.run_tick()
+	# Because industry is #1 (3 MW) and life_support is #2 (2 MW) = 5 MW, remaining = 5 MW (< 6 MW for defense!), defense browns out!
+	assert(t311_quarry.is_operational == true, "T3.11: Rank #1 industry must retain power in brownout")
+	assert(t311_hab.is_operational == true, "T3.11: Rank #2 life_support must retain power in brownout")
+	assert(t311_shield.is_operational == false, "T3.11: Lower ranked defense must brown out during deficit")
+	
+	building_mgr.remove_building(t311_shield)
+	building_mgr.remove_building(t311_hab)
+	building_mgr.remove_building(t311_quarry)
+	GameState.reset_directives_and_research()
+	print("[OK] T3.11: test_dynamic_power_priorities пройден (пользовательские приоритеты определяют порядок отключения)")
+	
+	# -------------------------------------------------------------
+	# T3.12: test_armor_deck_above_only_and_overhead_protection
+	# -------------------------------------------------------------
+	GameState.set_game_mode(GameState.GameMode.STANDARD)
+	ResourceManager.set_resource("ore", 1000)
+	ResourceManager.set_resource("materials", 1000)
+	var t312_fail_z0 = building_mgr.place_building(armor_deck_data, Vector2i(6, 6), 0)
+	assert(t312_fail_z0 == null, "T3.12: ArmorDeck must be rejected on z=0 (above_only)")
+	var t312_fail_zm1 = building_mgr.place_building(armor_deck_data, Vector2i(6, 6), -1)
+	assert(t312_fail_zm1 == null, "T3.12: ArmorDeck must be rejected on z=-1 (above_only)")
+	
+	layer_mgr.create_layer(1)
+	var t312_pillar = building_mgr.place_building(pillar_data, Vector2i(0, 2), 0)
+	var t312_deck = building_mgr.place_building(armor_deck_data, Vector2i(2, 2), 1)
+	assert(t312_deck != null, "T3.12: ArmorDeck placement on z=+1 must succeed")
+	assert(defense_sys.is_position_armor_covered(0, Vector2i(2, 2)) == true, "T3.12: z=0 cell (2,2) must be armor-covered by deck on z=+1")
+	assert(defense_sys.is_position_armor_covered(0, Vector2i(9, 9)) == false, "T3.12: Uncovered cell must return false")
+	
+	var deck_hp_before = t312_deck.current_hp
+	var passthrough = defense_sys.absorb_overhead_damage(0, Vector2i(2, 2), 500)
+	assert(passthrough == 0, "T3.12: ArmorDeck must absorb full 500 overhead damage")
+	assert(t312_deck.current_hp == deck_hp_before - 500, "T3.12: ArmorDeck HP must decrease by absorbed damage")
+	building_mgr.remove_building(t312_deck)
+	building_mgr.remove_building(t312_pillar)
+	print("[OK] T3.12: test_armor_deck_above_only_and_overhead_protection пройден")
+	
+	# -------------------------------------------------------------
+	# T3.13: test_damage_efficiency_degradation_ruins_and_refund
+	# -------------------------------------------------------------
+	ResourceManager.set_resource("ore", 1000)
+	ResourceManager.set_resource("materials", 1000)
+	ResourceManager.set_resource("energy", 500)
+	var t313_quarry = building_mgr.place_building(quarry_data, Vector2i(-3, 0), 0)
+	assert(t313_quarry != null, "T3.13: Quarry placement failed")
+	network_mgr.recalculate_all()
+	assert(abs(t313_quarry.get_efficiency() - 1.0) < 0.001, "T3.13: Intact quarry efficiency must be 1.0")
+	assert(t313_quarry.damage_overlay_node.visible == false, "T3.13: Intact quarry DamageOverlay must be hidden")
+	assert(t313_quarry.sprite_node.modulate == Color(1.0, 1.0, 1.0, 1.0), "T3.13: Intact quarry modulate must be white")
+	assert(int(t313_quarry.get_refund()["ore"]) == int(quarry_data.cost_ore * 0.5), "T3.13: Intact refund must be 50%")
+	
+	# Drop quarry to 25% HP -> efficiency < 1.0, output reduced on tick!
+	t313_quarry.take_damage(int(quarry_data.max_hp * 0.75))
+	assert(t313_quarry.get_efficiency() < 0.75 and t313_quarry.get_efficiency() >= 0.4, "T3.13: Heavily damaged efficiency must scale down cleanly")
+	assert(t313_quarry.damage_overlay_node.visible == true, "T3.13: Damaged DamageOverlay must become visible <50% HP")
+	ResourceManager.set_resource("ore", 100)
+	tick_mgr.run_tick()
+	var gained_damaged = ResourceManager.get_resource("ore") - 100
+	assert(gained_damaged < quarry_data.ore_production and gained_damaged > 0, "T3.13: Damaged quarry must yield reduced ore (%d < %d)" % [gained_damaged, quarry_data.ore_production])
+	
+	# Drop to 0 HP -> ruins state (25% salvage refund!)
+	t313_quarry.take_damage(t313_quarry.current_hp)
+	assert(t313_quarry.current_hp == 0 and t313_quarry.get_efficiency() == 0.0, "T3.13: 0 HP efficiency must be 0.0")
+	assert(int(t313_quarry.get_refund()["ore"]) == int(quarry_data.cost_ore * 0.25), "T3.13: Ruined building refund must be 25%")
+	building_mgr.remove_building(t313_quarry)
+	print("[OK] T3.13: test_damage_efficiency_degradation_ruins_and_refund пройден")
 	
 	print("--- ВСЕ ТЕСТЫ ЭТАПА 3 УСПЕШНО ПРОЙДЕНЫ ---")

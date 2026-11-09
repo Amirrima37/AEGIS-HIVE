@@ -1,6 +1,8 @@
 extends Node
 
 const TestDefenseSystem = preload("res://tests/test_defense_system.gd")
+const TestHUDModularDock = preload("res://tests/test_hud_modular_dock.gd")
+const TestLinuxCompatibility = preload("res://tests/test_linux_compatibility.gd")
 
 func _ready() -> void:
 	# Watchdog timer: automatically exit process after 15s if tests get stuck or crash
@@ -538,5 +540,11 @@ func _ready() -> void:
 	# --- ТЕСТЫ ЭТАПА 3: ОБОРОНИТЕЛЬНЫЕ СИСТЕМЫ ---
 	TestDefenseSystem.run_all_tests(main_node)
 	
-	print("--- ВСЕ ТЕСТЫ ЭТАПОВ 0, 1, 2 И 3 УСПЕШНО ПРОЙДЕНЫ (EXIT 0) ---")
+	# --- ТЕСТЫ GUI: МОДУЛЬНЫЙ ДОК И БРУТАЛИСТСКИЙ HUD ---
+	await TestHUDModularDock.run_all_tests(main_node)
+	
+	# --- ТЕСТЫ LINUX & STEAM DECK COMPATIBILITY ---
+	TestLinuxCompatibility.run_all_tests(main_node)
+	
+	print("--- ВСЕ ТЕСТЫ ЭТАПОВ 0, 1, 2, 3, GUI И LINUX/STEAM DECK УСПЕШНО ПРОЙДЕНЫ (EXIT 0) ---")
 	get_tree().quit(0)
