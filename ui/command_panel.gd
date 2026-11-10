@@ -48,6 +48,9 @@ var _research_cards_box: VBoxContainer = null
 var _tech_action_buttons: Dictionary = {} # StringName -> Button
 var _tech_progress_bars: Dictionary = {} # StringName -> ProgressBar
 var _tech_status_labels: Dictionary = {} # StringName -> Label
+var _priority_row_nodes: Dictionary = {} # cat_id -> { "row": HBoxContainer, "label": Label, "btn_up": Button, "btn_down": Button }
+var _cached_research_manager: Node = null
+var _cached_tick_manager: Node = null
 
 func _ready() -> void:
 	add_theme_stylebox_override("panel", BrutalistTheme.create_panel_style(
@@ -486,30 +489,29 @@ func refresh_dynamic_readouts() -> void:
 
 func _update_tab_highlights() -> void:
 	if is_instance_valid(btn_tab_research):
-		if _is_expanded and _active_tab == "research":
-			btn_tab_research.add_theme_stylebox_override("normal", BrutalistTheme.create_active_button_style())
+		var active = _is_expanded and _active_tab == "research"
+		BrutalistTheme.set_button_active(btn_tab_research, active)
+		if active:
 			btn_tab_research.add_theme_color_override("font_color", Color(0.45, 0.88, 1.0))
 		else:
-			btn_tab_research.remove_theme_stylebox_override("normal")
 			btn_tab_research.add_theme_color_override("font_color", BrutalistTheme.TEXT_BRIGHT)
 	if is_instance_valid(btn_tab_directives):
-		if _is_expanded and _active_tab == "directives":
-			btn_tab_directives.add_theme_stylebox_override("normal", BrutalistTheme.create_active_button_style())
+		var active = _is_expanded and _active_tab == "directives"
+		BrutalistTheme.set_button_active(btn_tab_directives, active)
+		if active:
 			btn_tab_directives.add_theme_color_override("font_color", BrutalistTheme.TEXT_AMBER)
 		else:
-			btn_tab_directives.remove_theme_stylebox_override("normal")
 			btn_tab_directives.add_theme_color_override("font_color", BrutalistTheme.TEXT_BRIGHT)
 
 func _update_directives_controls() -> void:
 	if is_instance_valid(btn_combat_shift):
 		var c_active = GameState and GameState.combat_power_shift_active
+		BrutalistTheme.set_button_active(btn_combat_shift, c_active)
 		if c_active:
 			btn_combat_shift.text = "⚡ ЭНЕРГОПЕРЕБРОС: АКТИВЕН [ВКЛ]"
-			btn_combat_shift.add_theme_stylebox_override("normal", BrutalistTheme.create_active_button_style())
 			btn_combat_shift.add_theme_color_override("font_color", BrutalistTheme.TEXT_AMBER)
 		else:
 			btn_combat_shift.text = "⚡ ВКЛЮЧИТЬ БОЕВОЙ ПЕРЕБРОС"
-			btn_combat_shift.remove_theme_stylebox_override("normal")
 			btn_combat_shift.add_theme_color_override("font_color", BrutalistTheme.TEXT_BRIGHT)
 
 	var aegis_unlocked = GameState and GameState.aegis_protocol_unlocked
@@ -526,16 +528,15 @@ func _update_directives_controls() -> void:
 		if not aegis_unlocked:
 			btn_aegis_protocol.disabled = true
 			btn_aegis_protocol.text = "🔒 ПРОТОКОЛ «ЭГИДА» ЗАБЛОКИРОВАН"
-			btn_aegis_protocol.remove_theme_stylebox_override("normal")
+			BrutalistTheme.set_button_active(btn_aegis_protocol, false)
 		else:
 			btn_aegis_protocol.disabled = false
+			BrutalistTheme.set_button_active(btn_aegis_protocol, aegis_active)
 			if aegis_active:
 				btn_aegis_protocol.text = "🛡 ПРОТОКОЛ «ЭГИДА»: АКТИВЕН [ВКЛ]"
-				btn_aegis_protocol.add_theme_stylebox_override("normal", BrutalistTheme.create_active_button_style())
 				btn_aegis_protocol.add_theme_color_override("font_color", Color(0.35, 0.90, 1.0))
 			else:
 				btn_aegis_protocol.text = "🛡 АКТИВИРОВАТЬ ПРОТОКОЛ «ЭГИДА»"
-				btn_aegis_protocol.remove_theme_stylebox_override("normal")
 				btn_aegis_protocol.add_theme_color_override("font_color", BrutalistTheme.TEXT_BRIGHT)
 
 	if is_instance_valid(btn_jump_to_research):
@@ -556,48 +557,70 @@ func _update_directives_controls() -> void:
 func _rebuild_priority_rows() -> void:
 	if not is_instance_valid(_priority_rows_box) or not GameState or not GameState.has_method("get_power_category_order"):
 		return
-	for c in _priority_rows_box.get_children():
-		_priority_rows_box.remove_child(c)
-		c.queue_free()
 
 	var order = GameState.get_power_category_order()
 	var tm = _get_tick_manager()
 	var power_summary: Dictionary = tm.get_category_power_summary() if (tm and tm.has_method("get_category_power_summary")) else {}
 
+	if _priority_row_nodes.size() != order.size():
+		for c in _priority_rows_box.get_children():
+			_priority_rows_box.remove_child(c)
+			c.queue_free()
+		_priority_row_nodes.clear()
+
+		for cat_id in order:
+			var row = HBoxContainer.new()
+			row.name = "PriorityRow_" + cat_id
+			row.add_theme_constant_override("separation", 4)
+			_priority_rows_box.add_child(row)
+
+			var lbl = Label.new()
+			lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			lbl.add_theme_font_size_override("font_size", 11)
+			lbl.add_theme_color_override("font_color", BrutalistTheme.TEXT_BRIGHT)
+			row.add_child(lbl)
+
+			var btn_up = Button.new()
+			btn_up.name = "BtnPrioUp_" + cat_id
+			btn_up.text = "▲"
+			btn_up.custom_minimum_size = Vector2(26, 22)
+			BrutalistTheme.apply_button_styles(btn_up)
+			var captured_cat = cat_id
+			btn_up.pressed.connect(func(): _move_priority_by_cat(captured_cat, -1))
+			row.add_child(btn_up)
+
+			var btn_down = Button.new()
+			btn_down.name = "BtnPrioDown_" + cat_id
+			btn_down.text = "▼"
+			btn_down.custom_minimum_size = Vector2(26, 22)
+			BrutalistTheme.apply_button_styles(btn_down)
+			btn_down.pressed.connect(func(): _move_priority_by_cat(captured_cat, 1))
+			row.add_child(btn_down)
+
+			_priority_row_nodes[cat_id] = {
+				"row": row,
+				"label": lbl,
+				"btn_up": btn_up,
+				"btn_down": btn_down
+			}
+
 	for idx in range(order.size()):
 		var cat_id = order[idx]
-		var row = HBoxContainer.new()
-		row.name = "PriorityRow_" + cat_id
-		row.add_theme_constant_override("separation", 4)
-		_priority_rows_box.add_child(row)
-
-		var lbl = Label.new()
+		var entry = _priority_row_nodes.get(cat_id)
+		if entry == null:
+			continue
 		var mw = int(power_summary.get(cat_id, 0))
-		lbl.text = "#%d %s (%d МВт)" % [idx + 1, CATEGORY_LABELS.get(cat_id, cat_id), mw]
-		lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		lbl.add_theme_font_size_override("font_size", 11)
-		lbl.add_theme_color_override("font_color", BrutalistTheme.TEXT_BRIGHT)
-		row.add_child(lbl)
+		entry["label"].text = "#%d %s (%d МВт)" % [idx + 1, CATEGORY_LABELS.get(cat_id, cat_id), mw]
+		entry["btn_up"].disabled = (idx == 0)
+		entry["btn_down"].disabled = (idx == order.size() - 1)
+		_priority_rows_box.move_child(entry["row"], idx)
 
-		var btn_up = Button.new()
-		btn_up.name = "BtnPrioUp_" + cat_id
-		btn_up.text = "▲"
-		btn_up.custom_minimum_size = Vector2(26, 22)
-		BrutalistTheme.apply_button_styles(btn_up)
-		btn_up.disabled = (idx == 0)
-		var cap_idx_up = idx
-		btn_up.pressed.connect(func(): _move_priority(cap_idx_up, -1))
-		row.add_child(btn_up)
-
-		var btn_down = Button.new()
-		btn_down.name = "BtnPrioDown_" + cat_id
-		btn_down.text = "▼"
-		btn_down.custom_minimum_size = Vector2(26, 22)
-		BrutalistTheme.apply_button_styles(btn_down)
-		btn_down.disabled = (idx == order.size() - 1)
-		var cap_idx_down = idx
-		btn_down.pressed.connect(func(): _move_priority(cap_idx_down, 1))
-		row.add_child(btn_down)
+func _move_priority_by_cat(cat_id: String, delta: int) -> void:
+	var order = GameState.get_power_category_order()
+	var idx = order.find(cat_id)
+	if idx == -1:
+		return
+	_move_priority(idx, delta)
 
 func _move_priority(idx: int, delta: int) -> void:
 	var order = GameState.get_power_category_order()
@@ -651,7 +674,7 @@ func _update_research_status() -> void:
 			if btn:
 				btn.text = "🧪 ИССЛЕДОВАТЬ"
 				btn.disabled = not can_start
-				btn.remove_theme_stylebox_override("normal")
+				BrutalistTheme.set_button_active(btn, false)
 
 func _on_start_research_pressed(tech_id: StringName) -> void:
 	var rm = _get_research_manager()
@@ -670,11 +693,17 @@ func _on_aegis_protocol_pressed() -> void:
 	refresh_all()
 
 func _get_research_manager() -> Node:
+	if is_instance_valid(_cached_research_manager):
+		return _cached_research_manager
 	if is_inside_tree():
-		return get_tree().root.find_child("ResearchManager", true, false)
+		_cached_research_manager = get_tree().root.find_child("ResearchManager", true, false)
+		return _cached_research_manager
 	return null
 
 func _get_tick_manager() -> Node:
+	if is_instance_valid(_cached_tick_manager):
+		return _cached_tick_manager
 	if is_inside_tree():
-		return get_tree().root.find_child("TickManager", true, false)
+		_cached_tick_manager = get_tree().root.find_child("TickManager", true, false)
+		return _cached_tick_manager
 	return null

@@ -6,11 +6,20 @@ class_name IsometricCamera
 @export var max_zoom: float = 3.0
 @export var zoom_step: float = 0.15
 @export var zoom_smoothness: float = 12.0
+@export var layer_manager: LayerManager = null
 
 var _target_zoom: Vector2 = Vector2.ONE
 var _is_dragging: bool = false
 var _drag_start_mouse_pos: Vector2 = Vector2.ZERO
 var _drag_start_cam_pos: Vector2 = Vector2.ZERO
+
+func _get_layer_manager() -> LayerManager:
+	if layer_manager and is_instance_valid(layer_manager):
+		return layer_manager
+	if is_inside_tree():
+		layer_manager = get_tree().root.find_child("LayerManager", true, false)
+		return layer_manager
+	return null
 
 func _ready() -> void:
 	_target_zoom = zoom
@@ -58,19 +67,25 @@ func _unhandled_input(event: InputEvent) -> void:
 				_is_dragging = true
 				_drag_start_mouse_pos = event.position
 				_drag_start_cam_pos = position
+				get_viewport().set_input_as_handled()
 			else:
-				_is_dragging = false
+				if _is_dragging:
+					_is_dragging = false
+					get_viewport().set_input_as_handled()
 		
 		# Mouse wheel zoom
 		elif event.is_pressed():
 			if event.button_index == MOUSE_BUTTON_WHEEL_UP:
 				_zoom_at_mouse(1.0 + zoom_step, event.position)
+				get_viewport().set_input_as_handled()
 			elif event.button_index == MOUSE_BUTTON_WHEEL_DOWN:
 				_zoom_at_mouse(1.0 - zoom_step, event.position)
+				get_viewport().set_input_as_handled()
 	
 	elif event is InputEventMouseMotion and _is_dragging:
 		var delta_mouse = event.position - _drag_start_mouse_pos
 		position = _drag_start_cam_pos - (delta_mouse / zoom.x)
+		get_viewport().set_input_as_handled()
 
 	# Keyboard hotkeys for layer switching and creation
 	elif event is InputEventKey and event.pressed and not event.echo:
@@ -81,18 +96,22 @@ func _unhandled_input(event: InputEvent) -> void:
 				_request_create_layer(1)
 			else:
 				EventBus.layer_change_requested.emit(1)
+			get_viewport().set_input_as_handled()
 		elif code == KEY_E:
 			if is_shift:
 				_request_create_layer(-1)
 			else:
 				EventBus.layer_change_requested.emit(-1)
+			get_viewport().set_input_as_handled()
 	
 	# Gamepad / Steam Deck shoulder buttons for layer navigation
 	elif event is InputEventJoypadButton and event.pressed:
 		if event.button_index == JOY_BUTTON_LEFT_SHOULDER:
 			EventBus.layer_change_requested.emit(1)
+			get_viewport().set_input_as_handled()
 		elif event.button_index == JOY_BUTTON_RIGHT_SHOULDER:
 			EventBus.layer_change_requested.emit(-1)
+			get_viewport().set_input_as_handled()
 
 func _zoom_at_mouse(factor: float, mouse_screen_pos: Vector2) -> void:
 	var old_zoom_val = _target_zoom.x
@@ -109,7 +128,7 @@ func _zoom_at_mouse(factor: float, mouse_screen_pos: Vector2) -> void:
 
 func _request_create_layer(direction: int) -> void:
 	# Direction: +1 for upper floor, -1 for underground
-	var lm = get_tree().root.find_child("LayerManager", true, false) if is_inside_tree() else null
+	var lm = _get_layer_manager()
 	var prev_count: int = lm.get_existing_z_levels().size() if (lm and lm.has_method("get_existing_z_levels")) else 0
 	if direction > 0:
 		EventBus.request_create_layer_above.emit()

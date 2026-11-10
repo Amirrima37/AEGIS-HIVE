@@ -84,7 +84,8 @@ func get_all_depots() -> Array[Building]:
 	return result
 
 func _find_most_damaged_in_range(depot: Building, range_tiles: float) -> Building:
-	var depot_pos = Vector2(depot.grid_position)
+	var depot_size = depot.data.tile_size if depot.data else Vector2i(1, 1)
+	var depot_pos = Vector2(depot.grid_position) + Vector2(depot_size) * 0.5
 	var best_building: Building = null
 	var lowest_hp_ratio = 1.0
 	
@@ -98,7 +99,8 @@ func _find_most_damaged_in_range(depot: Building, range_tiles: float) -> Buildin
 		if b.current_hp <= 0 or b.current_hp >= b.data.max_hp:
 			continue # Разрушенные руины или целые здания не ремонтируются
 			
-		var b_pos = Vector2(b.grid_position)
+		var b_size = b.data.tile_size if b.data else Vector2i(1, 1)
+		var b_pos = Vector2(b.grid_position) + Vector2(b_size) * 0.5
 		if depot_pos.distance_to(b_pos) <= range_tiles:
 			var ratio = float(b.current_hp) / float(b.data.max_hp)
 			if ratio < lowest_hp_ratio:

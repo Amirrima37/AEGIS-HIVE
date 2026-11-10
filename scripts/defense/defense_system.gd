@@ -95,13 +95,13 @@ func tick(delta: float) -> void:
 	if repair_depot:
 		repair_depot.run(delta)
 
-## Возвращает живую Бронепалубу с любого яруса выше target_z, перекрывающую клетку grid_pos
-func get_armor_deck_at(target_z: int, grid_pos: Vector2i) -> Building:
+## Возвращает все живые Бронепалубы с ярусов выше target_z, перекрывающие клетку grid_pos,
+## отсортированные по убыванию Z-яруса (сверху вниз).
+func get_armor_decks_above(target_z: int, grid_pos: Vector2i) -> Array[Building]:
 	_find_managers()
+	var decks: Array[Building] = []
 	if building_manager == null:
-		return null
-	var best_deck: Building = null
-	var highest_z := -999999
+		return decks
 	for b in building_manager.get_all_buildings():
 		if not is_instance_valid(b) or b.data == null or b.current_hp <= 0:
 			continue
@@ -112,24 +112,38 @@ func get_armor_deck_at(target_z: int, grid_pos: Vector2i) -> Building:
 		var origin = b.grid_position
 		var sz = b.data.tile_size
 		if grid_pos.x >= origin.x and grid_pos.x < origin.x + sz.x and grid_pos.y >= origin.y and grid_pos.y < origin.y + sz.y:
-			if b.z_level > highest_z:
-				highest_z = b.z_level
-				best_deck = b
-	return best_deck
+			decks.append(b)
+	decks.sort_custom(func(a: Building, b: Building) -> bool:
+		return a.z_level > b.z_level
+	)
+	return decks
+
+## Возвращает живую Бронепалубу с максимального яруса выше target_z, перекрывающую клетку grid_pos
+func get_armor_deck_at(target_z: int, grid_pos: Vector2i) -> Building:
+	var decks = get_armor_decks_above(target_z, grid_pos)
+	return decks[0] if not decks.is_empty() else null
 
 func is_position_armor_covered(target_z: int, grid_pos: Vector2i) -> bool:
 	return get_armor_deck_at(target_z, grid_pos) != null
 
-## Перехватывает урон от атак сверху (кислотный дождь / воздушный обстрел) бронепалубой
+## Перехватывает урон от атак сверху (кислотный дождь / воздушный обстрел) бронепалубами
+## Последовательно гасит урон через все защитные палубы в порядке убывания Z-яруса
 func absorb_overhead_damage(target_z: int, grid_pos: Vector2i, damage: int) -> int:
 	if damage <= 0:
 		return 0
-	var deck = get_armor_deck_at(target_z, grid_pos)
-	if deck == null or not is_instance_valid(deck) or deck.current_hp <= 0:
+	var decks = get_armor_decks_above(target_z, grid_pos)
+	if decks.is_empty():
 		return damage
-	var absorbed = min(deck.current_hp, damage)
-	deck.take_damage(absorbed)
-	return max(0, damage - absorbed)
+	var remaining_damage = damage
+	for deck in decks:
+		if remaining_damage <= 0:
+			break
+		if not is_instance_valid(deck) or deck.current_hp <= 0:
+			continue
+		var absorbed = min(deck.current_hp, remaining_damage)
+		deck.take_damage(absorbed)
+		remaining_damage -= absorbed
+	return max(0, remaining_damage)
 
 func get_layer_armor_decks_protecting(target_z: int) -> Array[Building]:
 	var result: Array[Building] = []

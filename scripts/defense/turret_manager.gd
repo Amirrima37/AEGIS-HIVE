@@ -87,7 +87,11 @@ func get_effective_range(turret: Building) -> float:
 	if bm:
 		for b in bm.get_buildings_on_layer(turret.z_level):
 			if is_instance_valid(b) and b.is_operational and b.connected_to_power and b.current_hp > 0 and b.data and b.data.defense_role == "sensor":
-				var dist = Vector2(turret.grid_position).distance_to(Vector2(b.grid_position))
+				var t_size = turret.data.tile_size if turret.data else Vector2i(1, 1)
+				var b_size = b.data.tile_size if b.data else Vector2i(1, 1)
+				var turret_center = Vector2(turret.grid_position) + Vector2(t_size) * 0.5
+				var b_center = Vector2(b.grid_position) + Vector2(b_size) * 0.5
+				var dist = turret_center.distance_to(b_center)
 				if dist <= b.data.sensor_radius:
 					return base_range * 1.2
 	return base_range
@@ -97,7 +101,8 @@ func find_nearest_target(turret: Building, targets: Array) -> Variant:
 	if not is_instance_valid(turret):
 		return null
 	var max_range = get_effective_range(turret)
-	var turret_pos = Vector2(turret.grid_position)
+	var t_size = turret.data.tile_size if turret.data else Vector2i(1, 1)
+	var turret_pos = Vector2(turret.grid_position) + Vector2(t_size) * 0.5
 	var best_target = null
 	var best_dist = INF
 	
@@ -120,7 +125,8 @@ func find_nearest_target(turret: Building, targets: Array) -> Variant:
 		var target_z: int = turret.z_level
 		if typeof(target) == TYPE_DICTIONARY:
 			if target.has("grid_position"):
-				target_pos = Vector2(target["grid_position"])
+				var tg_sz = target["tile_size"] if target.has("tile_size") else Vector2i(1, 1)
+				target_pos = Vector2(target["grid_position"]) + Vector2(tg_sz) * 0.5
 			elif target.has("position"):
 				target_pos = target["position"]
 			else:
@@ -129,7 +135,8 @@ func find_nearest_target(turret: Building, targets: Array) -> Variant:
 				target_z = target["z_level"]
 		elif target is Object:
 			if "grid_position" in target:
-				target_pos = Vector2(target.grid_position)
+				var tg_sz = target.data.tile_size if ("data" in target and target.data and "tile_size" in target.data) else Vector2i(1, 1)
+				target_pos = Vector2(target.grid_position) + Vector2(tg_sz) * 0.5
 			elif "position" in target:
 				target_pos = target.position
 			else:
@@ -203,13 +210,18 @@ func _draw_tracer(turret: Building, target: Variant) -> void:
 	var line = Line2D.new()
 	line.width = 2.5 if turret.data.defense_role == "railgun" else 1.5
 	line.default_color = Color(0.2, 0.9, 1.0, 0.9) if turret.data.defense_role == "railgun" else Color(1.0, 0.8, 0.2, 0.8)
-	line.add_point(from_pos)
-	line.add_point(to_pos)
-	get_tree().root.add_child(line)
 	
-	var tween = create_tween()
-	tween.tween_property(line, "modulate:a", 0.0, 0.2)
-	tween.tween_callback(line.queue_free)
+	var container: Node = turret.get_parent() if (turret and is_instance_valid(turret.get_parent())) else (get_tree().root if is_inside_tree() else null)
+	if container:
+		var local_from = container.to_local(from_pos) if (container is Node2D and container != get_tree().root) else from_pos
+		var local_to = container.to_local(to_pos) if (container is Node2D and container != get_tree().root) else to_pos
+		line.add_point(local_from)
+		line.add_point(local_to)
+		container.add_child(line)
+		
+		var tween = create_tween()
+		tween.tween_property(line, "modulate:a", 0.0, 0.2)
+		tween.tween_callback(line.queue_free)
 
 ## Сканирование и залп всех готовых турелей по целям
 func scan_and_fire_all(targets: Array) -> int:

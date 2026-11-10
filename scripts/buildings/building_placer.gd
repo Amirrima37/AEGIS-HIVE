@@ -32,6 +32,12 @@ func _ready() -> void:
 			EventBus.cable_mode_exited.connect(_on_cable_mode_exited)
 		if EventBus.has_signal("game_mode_changed"):
 			EventBus.game_mode_changed.connect(_on_game_mode_changed)
+		if EventBus.has_signal("active_layer_changed"):
+			EventBus.active_layer_changed.connect(func(_l): queue_redraw())
+		if EventBus.has_signal("building_placed"):
+			EventBus.building_placed.connect(func(_b): queue_redraw())
+		if EventBus.has_signal("building_removed"):
+			EventBus.building_removed.connect(func(_b): queue_redraw())
 
 func _setup_ghost() -> void:
 	_ghost_node = Node2D.new()
@@ -291,6 +297,8 @@ func _cancel_current_mode() -> void:
 		EventBus.demolish_mode_exited.emit()
 
 func _on_build_mode_entered(building_data: Resource) -> void:
+	if current_mode != Mode.IDLE:
+		_cancel_current_mode()
 	_clear_demolish_highlight()
 	if building_data is BuildingData:
 		current_building_data = building_data
@@ -308,6 +316,8 @@ func _on_build_mode_exited() -> void:
 		_ghost_node.visible = false
 
 func _on_cable_mode_entered(cable_data: Resource) -> void:
+	if current_mode != Mode.IDLE:
+		_cancel_current_mode()
 	_clear_demolish_highlight()
 	if cable_data is BuildingData:
 		current_building_data = cable_data
@@ -325,6 +335,8 @@ func _on_cable_mode_exited() -> void:
 		_ghost_node.visible = false
 
 func _on_demolish_mode_entered() -> void:
+	if current_mode != Mode.IDLE:
+		_cancel_current_mode()
 	current_mode = Mode.DEMOLISHING
 	current_building_data = null
 	_ghost_node.visible = false

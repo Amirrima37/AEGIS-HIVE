@@ -299,7 +299,7 @@ func _create_all_building_cards() -> void:
 		if b_data.repair_rate > 0:
 			tip += "\nАвторемонт: %.0f HP/с (радиус %.0f)" % [b_data.repair_rate, b_data.repair_range]
 		if b_data.ammo_production > 0:
-			tip += "\nПроизводство патронов: +%d/с" % b_data.ammo_production
+			tip += "\nПроизводство патронов: +%d/тик" % b_data.ammo_production
 		if b_data.unlocks_layer_above:
 			tip += "\nОткрывает строительство яруса ВЫШЕ"
 		if b_data.unlocks_layer_below:
@@ -451,42 +451,46 @@ func _on_demolish_pressed() -> void:
 	EventBus.demolish_mode_entered.emit()
 	_highlight_active_building_card(null)
 	if _demolish_button:
-		_demolish_button.add_theme_stylebox_override("normal", BrutalistTheme.create_active_button_style())
+		BrutalistTheme.set_button_active(_demolish_button, true, true)
 
 func _highlight_active_building_card(active_btn: Button) -> void:
 	for b in _building_buttons.values():
-		if b == active_btn:
-			b.add_theme_stylebox_override("normal", BrutalistTheme.create_active_button_style())
-		else:
-			b.remove_theme_stylebox_override("normal")
+		BrutalistTheme.set_button_active(b, b == active_btn)
 
 func _update_category_highlights() -> void:
 	for cat_id in _category_buttons.keys():
 		var btn: Button = _category_buttons[cat_id]
-		if cat_id == _active_category and shelf_panel.visible:
-			btn.add_theme_stylebox_override("normal", BrutalistTheme.create_active_button_style())
-		else:
-			btn.remove_theme_stylebox_override("normal")
+		BrutalistTheme.set_button_active(btn, cat_id == _active_category and shelf_panel.visible)
 
 func _update_sub_tab_highlights() -> void:
 	for tab_id in _sub_tab_buttons.keys():
 		var btn: Button = _sub_tab_buttons[tab_id]
-		if tab_id == _active_sub_tab:
-			btn.add_theme_stylebox_override("normal", BrutalistTheme.create_active_button_style())
-		else:
-			btn.remove_theme_stylebox_override("normal")
+		BrutalistTheme.set_button_active(btn, tab_id == _active_sub_tab)
 
 func _update_button_highlights() -> void:
 	_selected_building = null
 	_highlight_active_building_card(null)
 	if _demolish_button:
-		_demolish_button.remove_theme_stylebox_override("normal")
+		BrutalistTheme.set_button_active(_demolish_button, false, true)
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and not event.echo:
-		if event.keycode == KEY_ESCAPE and shelf_panel.visible:
-			_close_shelf()
-			get_viewport().set_input_as_handled()
+		var code = event.physical_keycode if event.physical_keycode != 0 else event.keycode
+		if code == KEY_ESCAPE:
+			if _selected_building != null:
+				var was_connector = _selected_building.is_connector and _selected_building.network_type in ["power_cable", "supply_cable"]
+				_selected_building = null
+				_highlight_active_building_card(null)
+				if was_connector:
+					EventBus.cable_mode_exited.emit()
+				else:
+					EventBus.build_mode_exited.emit()
+				get_viewport().set_input_as_handled()
+				return
+			if shelf_panel and shelf_panel.visible:
+				_close_shelf()
+				get_viewport().set_input_as_handled()
+				return
 
 func _on_resources_updated(_res_name: String, _amount: int) -> void:
 	_update_affordability()

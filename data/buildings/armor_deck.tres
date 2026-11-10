@@ -8,6 +8,7 @@ script = ExtResource("1_bd")
 id = &"armor_deck"
 display_name = "Бронепалуба"
 description = "Массивное бронированное перекрытие для верхних ярусов (z >= +1). Перехватывает и гасит воздушные/орбитальные атаки для всех сооружений на ярусах ниже."
+icon = ExtResource("2_tex")
 sprite = ExtResource("2_tex")
 tile_size = Vector2i(2, 2)
 cost_ore = 35

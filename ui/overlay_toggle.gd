@@ -60,11 +60,10 @@ func _setup_button(btn: Button, overlay_id: String, tip: String, is_soon: bool =
 
 func _on_button_toggled(overlay_id: String, pressed: bool, btn: Button, is_soon: bool = false) -> void:
 	_overlay_states[overlay_id] = pressed
+	BrutalistTheme.set_button_active(btn, pressed)
 	if pressed:
-		btn.add_theme_stylebox_override("normal", BrutalistTheme.create_active_button_style())
 		btn.add_theme_color_override("font_color", BrutalistTheme.TEXT_AMBER)
 	else:
-		btn.remove_theme_stylebox_override("normal")
 		btn.add_theme_color_override("font_color", BrutalistTheme.TEXT_MUTED if is_soon else BrutalistTheme.TEXT_BRIGHT)
 		
 	if EventBus and EventBus.has_signal("overlay_toggled"):
@@ -86,9 +85,8 @@ func _on_external_overlay_toggled(overlay_name: String, is_visible: bool) -> voi
 		
 	if btn and btn.button_pressed != is_visible:
 		btn.set_pressed_no_signal(is_visible)
+		BrutalistTheme.set_button_active(btn, is_visible)
 		if is_visible:
-			btn.add_theme_stylebox_override("normal", BrutalistTheme.create_active_button_style())
 			btn.add_theme_color_override("font_color", BrutalistTheme.TEXT_AMBER)
 		else:
-			btn.remove_theme_stylebox_override("normal")
 			btn.add_theme_color_override("font_color", BrutalistTheme.TEXT_MUTED if is_soon else BrutalistTheme.TEXT_BRIGHT)

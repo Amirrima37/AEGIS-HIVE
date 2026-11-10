@@ -38,6 +38,26 @@ func _ready() -> void:
 		if EventBus.has_signal("building_placed"):
 			EventBus.building_placed.connect(func(_b): _refresh_domes_if_active())
 		EventBus.building_removed.connect(_on_building_removed)
+		if EventBus.has_signal("tick"):
+			EventBus.tick.connect(_on_tick)
+
+func _on_tick(_tick_count: int) -> void:
+	if not is_active:
+		return
+	var active_gens = get_active_generators()
+	if active_gens.is_empty():
+		return
+	var cost = int(ceil(energy_per_sec))
+	if cost <= 0:
+		return
+	if ResourceManager:
+		if ResourceManager.can_afford({"energy": cost}):
+			ResourceManager.spend({"energy": cost})
+		else:
+			deactivate()
+			shield_depleted.emit()
+			if EventBus and EventBus.has_signal("shield_depleted"):
+				EventBus.shield_depleted.emit()
 
 func _on_wave_ended(_idx: int) -> void:
 	# Under active Aegis Protocol, shields remain forced in readiness even between waves
@@ -90,7 +110,11 @@ func is_position_shielded(z: int, grid_pos: Vector2i) -> bool:
 		return false
 	var generators = get_active_generators(z)
 	for gen in generators:
-		var rad = gen.data.shield_radius if gen.data.shield_radius > 0.0 else shield_radius
+		var eff = gen.get_efficiency() if gen.has_method("get_efficiency") else 1.0
+		if eff <= 0.0:
+			continue
+		var base_rad = gen.data.shield_radius if gen.data.shield_radius > 0.0 else shield_radius
+		var rad = base_rad * eff
 		var center = Vector2(gen.grid_position) + Vector2(gen.data.tile_size) * 0.5
 		if center.distance_to(Vector2(grid_pos)) <= rad:
 			return true
@@ -98,7 +122,7 @@ func is_position_shielded(z: int, grid_pos: Vector2i) -> bool:
 
 ## Поглощение входящего урона щитом. Возвращает остаточный непоглощенный урон.
 func absorb_damage(z: int, grid_pos: Vector2i, damage: int) -> int:
-	if not is_active:
+	if not is_active or damage <= 0:
 		return damage
 		
 	var generators = get_active_generators(z)
@@ -108,15 +132,24 @@ func absorb_damage(z: int, grid_pos: Vector2i, damage: int) -> int:
 			EventBus.shield_depleted.emit()
 		return damage
 		
+	var remaining_damage = damage
 	for gen in generators:
-		var rad = gen.data.shield_radius if gen.data.shield_radius > 0.0 else shield_radius
+		var eff = gen.get_efficiency() if gen.has_method("get_efficiency") else 1.0
+		if eff <= 0.0:
+			continue
+		var base_rad = gen.data.shield_radius if gen.data.shield_radius > 0.0 else shield_radius
+		var rad = base_rad * eff
 		var center = Vector2(gen.grid_position) + Vector2(gen.data.tile_size) * 0.5
 		if center.distance_to(Vector2(grid_pos)) <= rad:
-			# Урон полностью рассеян силовым полем
-			_flash_shield_visual(gen)
-			return 0
+			var absorb_ratio = clampf(eff, 0.0, 1.0)
+			var absorbed = int(round(float(remaining_damage) * absorb_ratio))
+			if absorbed > 0:
+				remaining_damage -= absorbed
+				_flash_shield_visual(gen)
+			if remaining_damage <= 0:
+				return 0
 			
-	return damage
+	return remaining_damage
 
 func _flash_shield_visual(gen: Building) -> void:
 	if _dome_nodes.has(gen) and is_instance_valid(_dome_nodes[gen]):
@@ -143,7 +176,9 @@ func _update_domes() -> void:
 			dome.draw.connect(func():
 				if not is_instance_valid(gen) or gen.data == null:
 					return
-				var rad_px = (gen.data.shield_radius if gen.data.shield_radius > 0.0 else shield_radius) * 64.0
+				var eff = gen.get_efficiency() if gen.has_method("get_efficiency") else 1.0
+				var base_rad = gen.data.shield_radius if gen.data.shield_radius > 0.0 else shield_radius
+				var rad_px = base_rad * maxf(0.0, eff) * 64.0
 				# Dimetric 2:1 isometric projection ellipse matching world grid
 				dome.draw_set_transform(Vector2.ZERO, 0.0, Vector2(1.0, 0.5))
 				dome.draw_arc(Vector2.ZERO, rad_px, 0, TAU, 48, Color(0.2, 0.78, 1.0, 0.85), 2.5, true)

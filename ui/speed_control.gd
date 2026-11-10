@@ -49,12 +49,16 @@ func _unhandled_input(event: InputEvent) -> void:
 		var code = event.physical_keycode if event.physical_keycode != 0 else event.keycode
 		if code == KEY_1:
 			set_speed(1.0)
+			get_viewport().set_input_as_handled()
 		elif code == KEY_2:
 			set_speed(2.0)
+			get_viewport().set_input_as_handled()
 		elif code == KEY_3:
 			set_speed(3.0)
+			get_viewport().set_input_as_handled()
 		elif code == KEY_SPACE:
 			toggle_pause()
+			get_viewport().set_input_as_handled()
 
 func set_speed(speed: float) -> void:
 	GameState.game_speed = speed
@@ -92,12 +96,11 @@ func _update_visuals() -> void:
 	var speed = GameState.game_speed
 	
 	if btn_pause:
+		BrutalistTheme.set_button_active(btn_pause, paused)
 		if paused:
-			btn_pause.add_theme_stylebox_override("normal", BrutalistTheme.create_active_button_style())
 			btn_pause.text = "▶" if _is_compact else "▶ Старт"
 			btn_pause.add_theme_color_override("font_color", BrutalistTheme.TEXT_AMBER)
 		else:
-			btn_pause.remove_theme_stylebox_override("normal")
 			btn_pause.text = "⏸" if _is_compact else "⏸ Пауза"
 			btn_pause.add_theme_color_override("font_color", BrutalistTheme.TEXT_BRIGHT)
 		
@@ -109,9 +112,8 @@ func _update_visuals() -> void:
 		_highlight_speed_button(btn_speed3, speed == 3.0 and not paused)
 
 func _highlight_speed_button(btn: Button, is_active: bool) -> void:
+	BrutalistTheme.set_button_active(btn, is_active)
 	if is_active:
-		btn.add_theme_stylebox_override("normal", BrutalistTheme.create_active_button_style())
 		btn.add_theme_color_override("font_color", BrutalistTheme.TEXT_AMBER)
 	else:
-		btn.remove_theme_stylebox_override("normal")
 		btn.add_theme_color_override("font_color", BrutalistTheme.TEXT_MUTED)

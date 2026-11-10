@@ -8,16 +8,22 @@ var current_hp: int = 100
 
 var connected_to_power: bool = true:
 	set(value):
+		if connected_to_power == value:
+			return
 		connected_to_power = value
 		update_operational_state()
 
 var connected_to_supply: bool = true:
 	set(value):
+		if connected_to_supply == value:
+			return
 		connected_to_supply = value
 		update_operational_state()
 
 var is_operational: bool = true:
 	set(value):
+		if is_operational == value:
+			return
 		is_operational = value
 		_update_operational_visuals()
 
@@ -189,8 +195,10 @@ func update_operational_state() -> void:
 					op = false
 			if GameState and GameState.has_method("is_blocked_by_combat_mode") and GameState.is_blocked_by_combat_mode(data):
 				op = false
+	var op_changed = (is_operational != op)
 	is_operational = op
-	_update_damage_visuals()
+	if not op_changed:
+		_update_operational_visuals()
 
 func _update_damage_visuals() -> void:
 	var max_hp = max(1, data.max_hp if data else 100)
@@ -226,10 +234,13 @@ func _update_operational_visuals() -> void:
 	
 	if status_rim_node and is_instance_valid(status_rim_node):
 		var is_conn = (data != null and data.is_connector)
-		var should_show = (not is_operational) and (not is_conn)
+		var should_show = (not is_operational) and (not is_conn) and (current_hp > 0)
 		status_rim_node.visible = should_show
+		set_process(should_show)
 		if should_show:
 			status_rim_node.queue_redraw()
+	else:
+		set_process(false)
 
 func take_damage(amount: int) -> void:
 	current_hp = max(0, current_hp - amount)

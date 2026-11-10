@@ -4,6 +4,9 @@ extends Node
 var layer_manager: Node = null
 var _grid: Dictionary = {} # z: int -> Dictionary (Vector2i -> Building)
 var _blocked_cells: Dictionary = {} # z: int -> Dictionary (Vector2i -> bool)
+var _astar_grids: Dictionary = {} # z: int -> AStarGrid2D
+
+const DEFAULT_BOUNDS: Rect2i = Rect2i(-128, -128, 256, 256)
 
 func _ready() -> void:
 	if EventBus:
@@ -14,6 +17,9 @@ func _ready() -> void:
 
 func init_grid(p_layer_manager: Node) -> void:
 	layer_manager = p_layer_manager
+	if layer_manager and "layers" in layer_manager:
+		for z in layer_manager.layers:
+			_get_or_create_astar(z)
 
 func _get_layer_manager() -> Node:
 	if layer_manager and is_instance_valid(layer_manager):
@@ -25,15 +31,55 @@ func _get_layer_manager() -> Node:
 			return layer_manager
 	return null
 
+func _get_or_create_astar(z: int) -> AStarGrid2D:
+	if _astar_grids.has(z):
+		return _astar_grids[z]
+	var astar = AStarGrid2D.new()
+	astar.region = DEFAULT_BOUNDS
+	astar.cell_size = Vector2(1, 1)
+	astar.diagonal_mode = AStarGrid2D.DIAGONAL_MODE_NEVER
+	astar.update()
+	_sync_astar_grid(z, astar)
+	_astar_grids[z] = astar
+	return astar
+
+func _sync_astar_grid(z: int, astar: AStarGrid2D) -> void:
+	var lm = _get_layer_manager()
+	if lm and "layers" in lm and lm.layers.has(z):
+		var layer_data = lm.layers[z]
+		var tml = layer_data.tile_map_layer
+		if tml and tml is TileMapLayer:
+			astar.fill_solid_region(astar.region, true)
+			for pos in tml.get_used_cells():
+				if astar.is_in_boundsv(pos):
+					astar.set_point_solid(pos, false)
+	else:
+		astar.fill_solid_region(astar.region, false)
+
+	if _blocked_cells.has(z):
+		for pos in _blocked_cells[z]:
+			if _blocked_cells[z][pos] and astar.is_in_boundsv(pos):
+				astar.set_point_solid(pos, true)
+
+func _ensure_bounds(astar: AStarGrid2D, z: int, pos: Vector2i) -> void:
+	if not astar.is_in_boundsv(pos):
+		var new_region = astar.region.expand(pos).grow(32)
+		astar.region = new_region
+		astar.update()
+		_sync_astar_grid(z, astar)
+
 func _on_layer_created(z: int) -> void:
 	if not _grid.has(z):
 		_grid[z] = {}
 	if not _blocked_cells.has(z):
 		_blocked_cells[z] = {}
+	_astar_grids.erase(z)
+	_get_or_create_astar(z)
 
 func _on_layer_removed(z: int) -> void:
 	_grid.erase(z)
 	_blocked_cells.erase(z)
+	_astar_grids.erase(z)
 
 func _on_wall_destroyed(w: Node2D) -> void:
 	if is_instance_valid(w) and "grid_position" in w and "z_level" in w:
@@ -114,56 +160,35 @@ func set_blocked(z: int, pos: Vector2i, blocked: bool) -> void:
 	else:
 		_blocked_cells[z].erase(pos)
 
+	if _astar_grids.has(z):
+		var astar: AStarGrid2D = _astar_grids[z]
+		_ensure_bounds(astar, z, pos)
+		if astar.is_in_boundsv(pos):
+			if blocked:
+				astar.set_point_solid(pos, true)
+			else:
+				if has_tile(z, pos):
+					astar.set_point_solid(pos, false)
+				else:
+					astar.set_point_solid(pos, true)
+
 func find_path(z: int, start_pos: Vector2i, end_pos: Vector2i) -> Array[Vector2i]:
 	if start_pos == end_pos:
 		return [start_pos]
 		
-	var queue: Array[Vector2i] = [start_pos]
-	var visited: Dictionary = {start_pos: true}
-	var parent: Dictionary = {}
-	
-	var directions = [
-		Vector2i(1, 0),
-		Vector2i(-1, 0),
-		Vector2i(0, 1),
-		Vector2i(0, -1)
-	]
-	
-	var found = false
-	var max_iterations = 2000
-	var iters = 0
-	
-	while queue.size() > 0 and iters < max_iterations:
-		iters += 1
-		var current = queue.pop_front()
-		if current == end_pos:
-			found = true
-			break
-			
-		for d in directions:
-			var neighbor = current + d
-			if visited.has(neighbor):
-				continue
-			if is_blocked(z, neighbor):
-				continue
-			if not has_tile(z, neighbor):
-				continue
-				
-			visited[neighbor] = true
-			parent[neighbor] = current
-			queue.push_back(neighbor)
-			
-	if not found:
+	var astar = _get_or_create_astar(z)
+	_ensure_bounds(astar, z, start_pos)
+	_ensure_bounds(astar, z, end_pos)
+
+	if not astar.is_in_boundsv(start_pos) or not astar.is_in_boundsv(end_pos):
 		return []
-		
-	var path: Array[Vector2i] = []
-	var curr = end_pos
-	while curr != start_pos:
-		path.push_front(curr)
-		curr = parent[curr]
-	path.push_front(start_pos)
-	return path
+
+	if astar.is_point_solid(start_pos) or astar.is_point_solid(end_pos):
+		return []
+
+	return astar.get_id_path(start_pos, end_pos)
 
 func clear() -> void:
 	_grid.clear()
 	_blocked_cells.clear()
+	_astar_grids.clear()

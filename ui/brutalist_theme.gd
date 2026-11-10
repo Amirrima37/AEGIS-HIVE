@@ -93,3 +93,28 @@ static func create_active_button_style() -> StyleBoxFlat:
 	sb.content_margin_top = 4
 	sb.content_margin_bottom = 4
 	return sb
+
+static func create_normal_button_style(is_demolish: bool = false) -> StyleBoxFlat:
+	var sb = StyleBoxFlat.new()
+	sb.set_border_width_all(1)
+	sb.set_corner_radius_all(3)
+	sb.content_margin_left = 8
+	sb.content_margin_right = 8
+	sb.content_margin_top = 4
+	sb.content_margin_bottom = 4
+	if is_demolish:
+		sb.bg_color = BG_DEMOLISH
+		sb.border_color = BORDER_DEMOLISH
+	else:
+		sb.bg_color = BG_BTN_NORMAL
+		sb.border_color = BORDER_DARK
+	return sb
+
+static func set_button_active(btn: Button, active: bool, is_demolish: bool = false) -> void:
+	if not is_instance_valid(btn):
+		return
+	if active:
+		btn.add_theme_stylebox_override("normal", create_active_button_style())
+	else:
+		btn.add_theme_stylebox_override("normal", create_normal_button_style(is_demolish))
+

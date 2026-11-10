@@ -262,12 +262,14 @@ func validate_structural_integrity() -> Array[int]:
 			is_upper_supported[z] = supported
 			if not supported:
 				compromised.append(z)
-				if EventBus and EventBus.has_signal("layer_integrity_compromised"):
-					EventBus.layer_integrity_compromised.emit(z, "missing_support_pillar")
+				if not _compromised_layers.has(z):
+					if EventBus and EventBus.has_signal("layer_integrity_compromised"):
+						EventBus.layer_integrity_compromised.emit(z, "missing_support_pillar")
 		elif z < 0 and not bm.has_excavation_rig(z):
 			compromised.append(z)
-			if EventBus and EventBus.has_signal("layer_integrity_compromised"):
-				EventBus.layer_integrity_compromised.emit(z, "missing_excavation_rig")
+			if not _compromised_layers.has(z):
+				if EventBus and EventBus.has_signal("layer_integrity_compromised"):
+					EventBus.layer_integrity_compromised.emit(z, "missing_excavation_rig")
 	
 	_compromised_layers = compromised.duplicate()
 	return compromised

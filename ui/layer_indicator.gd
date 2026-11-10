@@ -222,10 +222,10 @@ func _highlight_active_in_list() -> void:
 			btn.add_theme_stylebox_override("normal", warn_sb)
 			btn.add_theme_color_override("font_color", BrutalistTheme.TEXT_RED if z != cur else BrutalistTheme.TEXT_AMBER)
 		elif z == cur:
-			btn.add_theme_stylebox_override("normal", BrutalistTheme.create_active_button_style())
+			BrutalistTheme.set_button_active(btn, true)
 			btn.add_theme_color_override("font_color", BrutalistTheme.TEXT_AMBER)
 		else:
-			btn.remove_theme_stylebox_override("normal")
+			BrutalistTheme.set_button_active(btn, false)
 			btn.add_theme_color_override("font_color", BrutalistTheme.TEXT_MUTED)
 
 func _update_text(z: int) -> void:

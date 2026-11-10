@@ -32,10 +32,22 @@ func get_total_population_capacity() -> int:
 		return ResourceManager.get_resource("population_capacity")
 	var all_buildings = building_manager.get_all_buildings()
 	var cap = 0
+	var is_aegis = GameState and GameState.aegis_protocol_active
+	var ds = get_tree().root.find_child("DefenseSystem", true, false) if (is_inside_tree() and is_aegis) else null
 	for b in all_buildings:
 		if is_instance_valid(b) and b.data and b.data.population_capacity > 0:
-			if b.is_operational and b.connected_to_power and b.current_hp > 0:
-				cap += b.data.population_capacity
+			if b.current_hp > 0:
+				if b.is_operational and b.connected_to_power:
+					cap += b.data.population_capacity
+				elif is_aegis and b.data.id == &"habitation_block":
+					var protected := false
+					if ds:
+						if ds.shield_controller and ds.shield_controller.is_position_shielded(b.z_level, b.grid_position):
+							protected = true
+						elif ds.has_method("is_position_armor_covered") and ds.is_position_armor_covered(b.z_level, b.grid_position):
+							protected = true
+					if protected:
+						cap += b.data.population_capacity
 	if cap == 0 and all_buildings.is_empty():
 		cap = max(10, ResourceManager.get_resource("population"))
 	return cap
@@ -120,17 +132,23 @@ func run_tick() -> void:
 		return pa < pb
 	)
 	
+	var total_energy_spent = 0
+	var available_energy = ResourceManager.get_resource("energy")
 	for b in consumers:
 		if b.connected_to_power and b.current_hp > 0:
 			var need = b.data.energy_consumption
-			if ResourceManager.get_resource("energy") >= need:
-				ResourceManager.spend({"energy": need})
+			if available_energy >= need:
+				available_energy -= need
+				total_energy_spent += need
 				b.is_operational = true
 			else:
 				# Brownout: низкоприоритетные здания отключаются первыми
 				b.is_operational = false
 		else:
 			b.is_operational = false
+				
+	if total_energy_spent > 0:
+		ResourceManager.spend({"energy": total_energy_spent})
 				
 	# Phase 3: ORE PRODUCTION (Quarries, etc.)
 	var total_ore_produced = 0
@@ -153,12 +171,18 @@ func run_tick() -> void:
 		ResourceManager.produce({"ore": total_ore_produced})
 		
 	# Phase 4 & 5: ORE CONSUMPTION & MATERIALS PRODUCTION (Factories)
+	var total_ore_spent = 0
+	var total_materials_produced = 0
+	var available_ore = ResourceManager.get_resource("ore")
+
 	for b in all_buildings:
 		if not is_instance_valid(b) or b.data == null:
 			continue
 		if b.data.is_connector:
 			continue
 		if GameState and GameState.has_method("is_blocked_by_combat_mode") and GameState.is_blocked_by_combat_mode(b.data):
+			continue
+		if b.data.materials_production <= 0 and (b.data.defense_role == "munitions" or b.data.id == &"munitions_factory"):
 			continue
 		if b.is_operational and b.connected_to_power and b.connected_to_supply and b.current_hp > 0:
 			var ore_need = b.data.ore_consumption
@@ -168,12 +192,18 @@ func run_tick() -> void:
 				mat_yield = 1
 			
 			if ore_need > 0:
-				if ResourceManager.get_resource("ore") >= ore_need:
-					ResourceManager.spend({"ore": ore_need})
+				if available_ore >= ore_need:
+					available_ore -= ore_need
+					total_ore_spent += ore_need
 					if mat_yield > 0:
-						ResourceManager.produce({"materials": mat_yield})
+						total_materials_produced += mat_yield
 			elif mat_yield > 0:
-				ResourceManager.produce({"materials": mat_yield})
+				total_materials_produced += mat_yield
+
+	if total_ore_spent > 0:
+		ResourceManager.spend({"ore": total_ore_spent})
+	if total_materials_produced > 0:
+		ResourceManager.produce({"materials": total_materials_produced})
 				
 	# Phase 6: Population capacity recalculation and gradual growth (frozen during combat lockdown)
 	var total_pop_cap = update_population_capacity()

@@ -3,6 +3,7 @@ extends Node2D
 
 @export var network_manager: NetworkManager = null
 @export var building_manager: BuildingManager = null
+@export var defense_system: DefenseSystem = null
 
 var show_power_overlay: bool = false
 var show_supply_overlay: bool = false
@@ -36,6 +37,16 @@ func _find_dependencies() -> void:
 			building_manager = network_manager.building_manager
 		elif is_inside_tree():
 			building_manager = get_tree().root.find_child("BuildingManager", true, false)
+	if (defense_system == null or not is_instance_valid(defense_system)) and is_inside_tree():
+		defense_system = get_tree().root.find_child("DefenseSystem", true, false)
+
+func _get_defense_system() -> DefenseSystem:
+	if defense_system and is_instance_valid(defense_system):
+		return defense_system
+	if is_inside_tree():
+		defense_system = get_tree().root.find_child("DefenseSystem", true, false)
+		return defense_system
+	return null
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and not event.echo:
@@ -206,7 +217,7 @@ func _draw() -> void:
 				draw_string(font, text_pos, hp_text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, Color(0.95, 0.97, 1.0, 1.0))
 
 		# Overhead Armor Deck shield projections protecting current layer from above
-		var ds = get_tree().root.find_child("DefenseSystem", true, false) if is_inside_tree() else null
+		var ds = _get_defense_system()
 		if ds and ds.has_method("get_layer_armor_decks_protecting"):
 			var decks = ds.get_layer_armor_decks_protecting(cur_z)
 			for deck in decks:

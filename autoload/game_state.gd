@@ -60,6 +60,8 @@ func is_combat_mode_active() -> bool:
 	return combat_power_shift_active or aegis_protocol_active
 
 func set_combat_power_shift(active: bool) -> void:
+	if not active and aegis_protocol_active:
+		return
 	if combat_power_shift_active == active:
 		return
 	combat_power_shift_active = active

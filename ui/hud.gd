@@ -62,7 +62,8 @@ func _apply_responsive_layout() -> void:
 	if not is_inside_tree() or not get_viewport():
 		return
 	var sz = get_viewport().get_visible_rect().size
-	var compact = (sz.x < 1550.0 or sz.y < 900.0)
+	var compact = (sz.x < 1900.0 or sz.y < 960.0)
+	var constrain_y = (sz.y < 960.0)
 	_is_compact_viewport = compact
 	
 	if is_instance_valid(topbar_hbox):
@@ -82,7 +83,7 @@ func _apply_responsive_layout() -> void:
 			overlay_toggle.set_compact_mode(compact)
 
 	if is_instance_valid(layer_indicator):
-		if compact:
+		if compact or constrain_y:
 			layer_indicator.offset_left = -202.0
 			layer_indicator.offset_right = -16.0
 			layer_indicator.offset_top = -115.0
@@ -93,9 +94,11 @@ func _apply_responsive_layout() -> void:
 			layer_indicator.offset_top = -145.0
 			layer_indicator.offset_bottom = 145.0
 		if layer_indicator.has_method("set_compact_mode"):
-			layer_indicator.set_compact_mode(compact)
+			layer_indicator.set_compact_mode(compact or constrain_y)
 		var li_min = layer_indicator.get_combined_minimum_size()
-		var li_h = maxf(230.0 if compact else 290.0, li_min.y)
+		var li_h = maxf(230.0 if (compact or constrain_y) else 290.0, li_min.y)
+		if constrain_y:
+			li_h = minf(li_h, 230.0)
 		layer_indicator.offset_top = -li_h * 0.5
 		layer_indicator.offset_bottom = li_h * 0.5
 		layer_indicator.offset_left = -maxf(196.0 if compact else 212.0, li_min.x) - 16.0
@@ -103,7 +106,7 @@ func _apply_responsive_layout() -> void:
 		layer_indicator.size = Vector2(maxf(196.0 if compact else 212.0, li_min.x), li_h)
 			
 	if is_instance_valid(minimap_panel):
-		if compact:
+		if compact or constrain_y:
 			minimap_panel.offset_left = -256.0
 			minimap_panel.offset_top = -196.0
 			minimap_panel.offset_right = -16.0
@@ -114,7 +117,7 @@ func _apply_responsive_layout() -> void:
 			minimap_panel.offset_right = -16.0
 			minimap_panel.offset_bottom = -16.0
 		if minimap_panel.has_method("set_compact_mode"):
-			minimap_panel.set_compact_mode(compact)
+			minimap_panel.set_compact_mode(compact or constrain_y)
 			
 	if is_instance_valid(speed_control):
 		speed_control.offset_left = 16.0
