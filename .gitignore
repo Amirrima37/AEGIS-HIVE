@@ -5,3 +5,7 @@
 .DS_Store
 *.tmp
 builds/
+graphify-out/
+scratch/
+__pycache__/
+*.pyc

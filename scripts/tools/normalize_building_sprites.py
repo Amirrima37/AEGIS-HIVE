@@ -67,10 +67,6 @@ SPECS = {
     'power_cable_corner.png': 1,
     'conveyor_corner.png': 1,
     'defense_wall_corner.png': 1,
-
-    # Structural Deck Plates (2x2)
-    'armor_deck.png': 2,
-    'armor_deck_rot.png': 2,
 }
 
 FIXED_HEIGHTS = {
