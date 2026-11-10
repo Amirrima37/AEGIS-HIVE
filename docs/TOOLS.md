@@ -23,10 +23,15 @@
 1. **Бесплатные проверенные паки (Primary Fast Track):**
    * **Kenney Sci-Fi / Space Kit:** Бесплатные CC0 3D low-poly модели и 2D изометрические тайлы.
    * **itch.io Isometric Sci-Fi packs:** Бесплатные и CC0 тайлсеты.
-2. **Рендеринг 3D-моделей в 2D изометрию:**
-   * Камера в Blender / Godot: ортографическая, угол наклона `30°` (или `atan(0.5) ≈ 26.565°` для истинного 2:1 пиксель-арта), поворот по Z: `45°`.
-   * Вывод: PNG с альфа-каналом в целевые разрешения (`assets/sprites/buildings/`).
-3. **Плейсхолдерные скрипты:**
+2. **Рендеринг 3D-моделей в 2D изометрию (проекционный контракт проекта):**
+   * Рендерер в Blender `5.2`: `BLENDER_EEVEE`, `film_transparent = True`, масштаб мира `1 тайл = 2.0 м × 2.0 м`.
+   * Камера: ортографическая (`ORTHO`), `rotation_euler = (radians(60.0), 0.0, radians(45.0))` (т.е. 30° над горизонтом -> `cos(60°) = 0.5`, что даёт точный ромб `128×64` px без искажений!), `fwd = Vector((-sqrt(6)/4, sqrt(6)/4, -0.5))`, `dist = 30.0`. Не использовать `atan(0.5) ≈ 26.565°` (`63.435°`) — это нарушит совмещение с `buildings_master.blend`.
+   * Вывод: PNG RGBA в целевые разрешения (`assets/sprites/buildings/`), без зеркалирования `flip_h` (для поворотов рендерятся отдельные варианты `_rot.png` / `_corner.png`).
+3. **Blender 5.2 Geometry Nodes (`GN_*`) и экспорт сокетов `SOCK_*`:**
+   * Для процедурных модулей (кабельные пучки, подстанции, эстакады, сшивки ЖК, венттурбины, обрывы плит) используется пайплайн из [`docs/PROCEDURAL_MEGACITY_PLAN.md`](PROCEDURAL_MEGACITY_PLAN.md#5-оффлайн-пайплайн-blender-52-geometry-nodes-и-система-сокетов) (артефакт [`procedural-megacity-plan.md`](file:///C:/Users/Amirrima37/.gemini/antigravity/brain/6cacdf2e-007e-45d7-84c5-378fba80c9fc/procedural-megacity-plan.md)):
+     * API сокетов Blender `5.2` (`nt.interface.new_socket`, `mod.properties.inputs.<ident>.value`), атрибуты износа с префиксом `_` (`_rust_streak`, `_drip_mask`).
+     * На крышах 3D-моделей начиная с Этапов 4–5 размещаются `Empty`-объекты `SOCK_CABLE_*`, `SOCK_BRIDGE_*`; формула проекции в пиксели Godot: `u_px = 32.0 * (X_b + Y_b)`, `v_px = 16.0 * (X_b - Y_b) - 39.191836 * Z_b`.
+4. **Плейсхолдерные скрипты:**
    * Программная генерация базовых геометрических спрайтов с маркерами через Python (`Pillow`) или Godot `Image`.
 
 ### Б. 2D-портреты персонажей, изометрические спрайты и иллюстрации
@@ -45,7 +50,9 @@
 4. **Посадка на дно холста:** Нижняя вершина ромба основания расположена на `Y = canvas_height - 3` (2 px антиалиасинга).
 5. **Формула выравнивания в коде (Sprite2D):**
    ```gdscript
-   sprite_node.offset = Vector2(0, size.x * 32.0 + 3.0 - texture_height * 0.5 + data.base_offset_y)
+   # Текущая формула (до Этапа 4): (size.x * 32.0 + 3.0) - texture_height * 0.5 + data.base_offset_y
+   # Целевая обобщенная формула для любых прямоугольных тайлов sx × sy (внедрить на Этапе 4):
+   sprite_node.offset = Vector2(0, (size.x + size.y) * 16.0 + 3.0 - texture_height * 0.5 + data.base_offset_y)
    ```
 6. **Скрипт автонормализации:**
    Любые новые сгенерированные или отрендеренные спрайты в `assets/sprites/buildings/` автоматически приводятся к стандарту запуском:

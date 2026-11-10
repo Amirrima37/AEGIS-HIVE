@@ -465,4 +465,128 @@ static func run_all_tests(main_node: Node) -> void:
 	building_mgr.remove_building(t313_quarry)
 	print("[OK] T3.13: test_damage_efficiency_degradation_ruins_and_refund пройден")
 	
+	# -------------------------------------------------------------
+	# T3.14: test_munitions_factory_single_spend_through_tick
+	# -------------------------------------------------------------
+	GameState.set_game_mode(GameState.GameMode.STANDARD)
+	ResourceManager.set_resource("energy", 1000)
+	ResourceManager.set_resource("ore", 1000)
+	ResourceManager.set_resource("materials", 1000)
+	defense_sys.ammo_supply.reset()
+	
+	var t314_mun = building_mgr.place_building(munitions_data, Vector2i(6, 6), 0)
+	assert(t314_mun != null, "T3.14: Munitions factory placement failed")
+	t314_mun.connected_to_power = true
+	t314_mun.connected_to_supply = true
+	t314_mun.is_operational = true
+	
+	# Set exact resources right before tick execution to measure tick spend in isolation
+	ResourceManager.set_resource("energy", 500)
+	ResourceManager.set_resource("ore", 100)
+	ResourceManager.set_resource("materials", 100)
+	ResourceManager.set_resource("ammo", 0)
+	
+	# Execute a full game tick through TickManager
+	tick_mgr.run_tick()
+	
+	# Munitions factory consumes 2 ore and 1 materials to produce 30 ammo (single-spend)
+	# If double-spend bug existed (TickManager Phase 4/5 + AmmoSupply), ore would be 96 instead of 98.
+	assert(ResourceManager.get_resource("ore") == 98, "T3.14: Ore must decrease by exactly 2 (single-spend), got %d" % ResourceManager.get_resource("ore"))
+	assert(ResourceManager.get_resource("materials") == 99, "T3.14: Materials must decrease by exactly 1, got %d" % ResourceManager.get_resource("materials"))
+	assert(ResourceManager.get_resource("ammo") == 30, "T3.14: Ammo produced must be 30 in ResourceManager, got %d" % ResourceManager.get_resource("ammo"))
+	assert(defense_sys.ammo_supply.ammo_stock == 30, "T3.14: AmmoSupply stock must match ResourceManager ammo (30)")
+	
+	building_mgr.remove_building(t314_mun)
+	print("[OK] T3.14: test_munitions_factory_single_spend_through_tick пройден (руда списана строго 1 раз за тик, боеприпасы произведены)")
+
+	# -------------------------------------------------------------
+	# T3.15: test_multi_layer_stacked_armor_decks
+	# -------------------------------------------------------------
+	ResourceManager.set_resource("energy", 1000)
+	ResourceManager.set_resource("ore", 2000)
+	ResourceManager.set_resource("materials", 2000)
+	if not layer_mgr.layers.has(1):
+		layer_mgr.create_layer(1)
+	if not layer_mgr.layers.has(2):
+		layer_mgr.create_layer(2)
+		
+	var t315_pillar0 = building_mgr.place_building(pillar_data, Vector2i(0, 4), 0)
+	var t315_pillar1 = building_mgr.place_building(pillar_data, Vector2i(0, 4), 1)
+	
+	# Stack two armor decks at same position across z=1 and z=2
+	var deck_pos := Vector2i(4, 4)
+	var t315_deck_z1 = building_mgr.place_building(armor_deck_data, deck_pos, 1)
+	var t315_deck_z2 = building_mgr.place_building(armor_deck_data, deck_pos, 2)
+	assert(t315_deck_z1 != null and t315_deck_z2 != null, "T3.15: Stacked armor decks placement failed")
+	assert(defense_sys.is_position_armor_covered(0, deck_pos) == true, "T3.15: z=0 cell must be armor covered by stacked decks")
+	
+	# Each deck has 8000 HP. Apply 10000 overhead damage to z=0 cell.
+	# Upper deck (z=2) absorbs first (8000 HP), and excess 2000 damage penetrates to lower deck (z=1).
+	var passthrough_stacked = defense_sys.absorb_overhead_damage(0, deck_pos, 10000)
+	assert(passthrough_stacked == 0, "T3.15: Stacked armor decks must absorb all 10000 damage without leaking to z=0")
+	assert(t315_deck_z2.current_hp == 0, "T3.15: Upper deck on z=2 must absorb first and reach 0 HP (destroyed)")
+	assert(t315_deck_z1.current_hp == 6000, "T3.15: Lower deck on z=1 must absorb remaining 2000 damage (8000 - 2000 = 6000), got %d" % t315_deck_z1.current_hp)
+	
+	building_mgr.remove_building(t315_deck_z2)
+	building_mgr.remove_building(t315_deck_z1)
+	if t315_pillar1:
+		building_mgr.remove_building(t315_pillar1)
+	if t315_pillar0:
+		building_mgr.remove_building(t315_pillar0)
+	print("[OK] T3.15: test_multi_layer_stacked_armor_decks пройден (поглощение сверху вниз, пробитие остаточного урона)")
+
+	# -------------------------------------------------------------
+	# T3.16: test_reverse_ammo_synchronization
+	# -------------------------------------------------------------
+	defense_sys.ammo_supply.reset()
+	ResourceManager.set_resource("ammo", 120)
+	assert(defense_sys.ammo_supply.ammo_stock == 120, "T3.16: AmmoSupply.ammo_stock must reflect ResourceManager set_resource(120)")
+	assert(defense_sys.ammo_supply.has_ammo(120) == true, "T3.16: has_ammo(120) must be true")
+	assert(defense_sys.ammo_supply.has_ammo(121) == false, "T3.16: has_ammo(121) must be false")
+	
+	# Reverse modification via ResourceManager.modify_resource
+	ResourceManager.modify_resource("ammo", -50)
+	assert(defense_sys.ammo_supply.ammo_stock == 70, "T3.16: AmmoSupply.ammo_stock must reflect ResourceManager modify_resource(-50)")
+	assert(defense_sys.ammo_supply.has_ammo(70) == true, "T3.16: has_ammo(70) must be true")
+	assert(defense_sys.ammo_supply.has_ammo(71) == false, "T3.16: has_ammo(71) must be false")
+	
+	defense_sys.ammo_supply.consume(20)
+	assert(ResourceManager.get_resource("ammo") == 50, "T3.16: Consuming through AmmoSupply must update ResourceManager ammo to 50")
+	defense_sys.ammo_supply.reset()
+	assert(ResourceManager.get_resource("ammo") == 0, "T3.16: Reset must set ResourceManager ammo to 0")
+	print("[OK] T3.16: test_reverse_ammo_synchronization пройден (двусторонняя синхронизация боеприпасов с ResourceManager)")
+
+	# -------------------------------------------------------------
+	# T3.17: test_excavation_rig_structural_demolition
+	# -------------------------------------------------------------
+	ResourceManager.set_resource("energy", 1000)
+	ResourceManager.set_resource("ore", 1000)
+	ResourceManager.set_resource("materials", 1000)
+	var exc_data = load("res://data/buildings/excavation_rig.tres") as BuildingData
+	assert(exc_data != null, "T3.17: excavation_rig.tres missing")
+	assert(exc_data.is_structural == true, "T3.17: excavation_rig must be flagged as is_structural = true")
+	
+	if not layer_mgr.layers.has(-1):
+		layer_mgr.create_layer(-1)
+	
+	# Without operational excavation rig on z=0 drilling to z=-1, layer -1 is compromised
+	var compromised_before = layer_mgr.validate_structural_integrity()
+	assert(compromised_before.has(-1), "T3.17: Layer -1 without excavation rig on z=0 must be flagged compromised")
+	
+	# Place excavation rig on z=0 (which unlocks and supports layer z=-1 below)
+	var t317_rig = building_mgr.place_building(exc_data, Vector2i(8, 8), 0)
+	assert(t317_rig != null, "T3.17: Excavation rig placement on z=0 failed")
+	assert(t317_rig.data.is_structural == true, "T3.17: Placed excavation rig instance data must have is_structural == true")
+	t317_rig.connected_to_power = true
+	t317_rig.is_operational = true
+	
+	var compromised_with_rig = layer_mgr.validate_structural_integrity()
+	assert(not compromised_with_rig.has(-1), "T3.17: Layer -1 with operational excavation rig must no longer be compromised")
+	
+	# Demolish excavation rig on z=0: because is_structural is true, layer_mgr._on_building_changed_structural triggers integrity recheck
+	building_mgr.remove_building(t317_rig)
+	var compromised_after_demo = layer_mgr.get_compromised_layers()
+	assert(compromised_after_demo.has(-1), "T3.17: Demolishing excavation rig must flag layer -1 as compromised again")
+	print("[OK] T3.17: test_excavation_rig_structural_demolition пройден (буровая установка имеет флаг is_structural и триггерит проверку целостности)")
+
 	print("--- ВСЕ ТЕСТЫ ЭТАПА 3 УСПЕШНО ПРОЙДЕНЫ ---")

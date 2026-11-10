@@ -61,7 +61,7 @@ static func run_all_tests(main_node: Node) -> void:
 	# Verify visibility of combat buildings vs others
 	for b_data in toolbar._building_buttons.keys():
 		var btn: Button = toolbar._building_buttons[b_data]
-		if b_data.id in [&"defense_wall", &"autocannon_turret", &"heavy_railgun"]:
+		if b_data.id in [&"defense_wall", &"armor_deck", &"autocannon_turret", &"heavy_railgun"]:
 			assert(btn.visible == true, "GUI.22: Combat building %s must be visible" % b_data.id)
 		elif b_data.id in [&"shield_generator", &"sensor_tower", &"munitions_factory", &"command_center"]:
 			assert(btn.visible == false, "GUI.23: Non-combat building %s must be hidden" % b_data.id)
@@ -288,12 +288,47 @@ static func run_all_tests(main_node: Node) -> void:
 	await main_node.get_tree().process_frame
 	assert(sub_hud.build_toolbar.shelf_panel.visible == false, "GUI.83: Opening CommandPanel in 1280x800 compact mode must close BuildShelf")
 	_assert_no_ui_overlaps(sub_hud, Vector2(1280, 800), "Compact 1280x800 (Research expanded, Shelf auto-closed)")
-	
 	sv.queue_free()
+
+	# 13C: 1550–1920 × 900 Desktop resolution matrix verification
+	var desktop_resolutions: Array[Vector2i] = [
+		Vector2i(1550, 900),
+		Vector2i(1600, 900),
+		Vector2i(1680, 1050),
+		Vector2i(1920, 900)
+	]
+	for target_res in desktop_resolutions:
+		var sv_mat := SubViewport.new()
+		sv_mat.name = "MatrixTestViewport_%dx%d" % [target_res.x, target_res.y]
+		sv_mat.size = target_res
+		sv_mat.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+		main_node.add_child(sv_mat)
+		var mat_hud := hud_scene.instantiate() as GameHUD
+		sv_mat.add_child(mat_hud)
+		await main_node.get_tree().process_frame
+		await main_node.get_tree().process_frame
+		
+		var vp_v2 := Vector2(target_res.x, target_res.y)
+		_assert_no_ui_overlaps(mat_hud, vp_v2, "Matrix %dx%d (Initial)" % [target_res.x, target_res.y])
+		
+		# Open shelf
+		mat_hud.build_toolbar._category_buttons["defense"].pressed.emit()
+		await main_node.get_tree().process_frame
+		await main_node.get_tree().process_frame
+		_assert_no_ui_overlaps(mat_hud, vp_v2, "Matrix %dx%d (Shelf open)" % [target_res.x, target_res.y])
+		
+		# Toggle CommandPanel
+		mat_hud.command_panel.btn_tab_research.pressed.emit()
+		await main_node.get_tree().process_frame
+		await main_node.get_tree().process_frame
+		_assert_no_ui_overlaps(mat_hud, vp_v2, "Matrix %dx%d (CommandPanel toggled)" % [target_res.x, target_res.y])
+		
+		sv_mat.queue_free()
+	
 	GameState.reset_directives_and_research()
 	GameState.set_game_mode(GameState.GameMode.STANDARD)
 	toolbar._close_shelf()
-	print("[OK] GUI.T13: Геометрическая матрица HUD проверена на 1920x1080 и 1280x800 — 0 пересечений и вылетов за экран")
+	print("[OK] GUI.T13: Геометрическая матрица HUD проверена на 1920x1080, 1280x800 и матрице 1550–1920x900 — 0 пересечений и вылетов за экран")
 	
 	print("--- ВСЕ ТЕСТЫ GUI УСПЕШНО ПРОЙДЕНЫ ---")
 

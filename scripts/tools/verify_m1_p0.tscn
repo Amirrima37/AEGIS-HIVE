@@ -1,0 +1,6 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scripts/tools/verify_m1_p0.gd" id="1_probe"]
+
+[node name="VerifyM1P0" type="Node"]
+script = ExtResource("1_probe")

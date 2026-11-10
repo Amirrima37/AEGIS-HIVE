@@ -340,12 +340,15 @@ func _ready() -> void:
 	assert(t29_factory.is_operational == false, "T2.10: factory must become unoperational")
 	print("[OK] T2.10: test_network_recalculates_on_demolish пройден")
 	
-	# T2.11: test_building_grid_alignment (All 11 buildings must have width == tile_size.x * 128 and standardized offset)
+	# T2.11: test_building_grid_alignment (All 19 buildings must have width == tile_size.x * 128 and standardized offset)
 	var catalog = [
-		"command_center", "fusion_reactor", "quarry", "factory",
-		"habitation_block", "support_pillar", "excavation_rig",
-		"power_cable", "conveyor", "shaft_elevator", "warehouse"
+		"armor_deck", "autocannon_turret", "command_center", "conveyor",
+		"defense_wall", "excavation_rig", "factory", "fusion_reactor",
+		"habitation_block", "heavy_railgun", "munitions_factory", "power_cable",
+		"quarry", "repair_depot", "sensor_tower", "shaft_elevator",
+		"shield_generator", "support_pillar", "warehouse"
 	]
+	assert(catalog.size() == 19, "T2.11: catalog must contain all 19 buildings")
 	for b_id in catalog:
 		var b_data = load("res://data/buildings/%s.tres" % b_id) as BuildingData
 		assert(b_data != null, "BuildingData not found: %s" % b_id)
@@ -359,7 +362,7 @@ func _ready() -> void:
 		var expected_offset_y = (b_data.tile_size.x * 32.0 + 3.0) - tex.get_height() * 0.5 + b_data.base_offset_y
 		assert(abs(dummy.sprite_node.offset.y - expected_offset_y) < 0.01, "Sprite offset formula mismatch for %s" % b_id)
 		dummy.queue_free()
-	print("[OK] T2.11: test_building_grid_alignment пройден (все 11 спрайтов строго соответствуют сетке)")
+	print("[OK] T2.11: test_building_grid_alignment пройден (все 19 спрайтов строго соответствуют сетке)")
 	
 	# T2.12: test_unlimited_mode (Sandbox mode allows building and layer expansion without resources/waiting)
 	assert(GameState.is_unlimited_mode() == false, "T2.12: default mode must be STANDARD")
